@@ -1,0 +1,126 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPanel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Montserrat", sans-serif;
+        }
+        #pass{
+            width: 275px;
+            margin: 0 16px;
+            outline: none;
+            font-size: 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 15px;
+            color: white;
+            transition: all ease-in-out 0.2s;
+        }
+        #pass:hover{
+            border-bottom: 2px solid white;
+        }
+        #pass:focus{
+            border-bottom: 2px solid white;
+        }
+        #accept {
+            width: 125px; padding: 16px; border-radius: 8px; border: none; font-weight: bold; color: white;  background: transparent;
+            transition: all ease-in-out 0.2s;
+        }
+        #accept:hover{
+            background-color: #ffffff60;
+            
+        }
+        
+    </style>
+</head>
+<body>
+    <div style="width: 100%;height: 100vh; background: #0e0c0c; display: flex; align-items: center; justify-content: center;">
+        <input id="pass"  type="password" name="" placeholder="Enter Admin Key" id="">
+        <button id="accept" >Access</button>
+    </div>
+    <script>
+        let input = document.getElementById("pass")
+        let btn = document.getElementById("accept")
+
+        btn.addEventListener("click",()=>{
+            if(input.value === "red_cow"){
+                
+            } 
+        })
+    </script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPanel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+        /* ... existing styles ... */
+        .error {
+            color: #ff6b6b;
+            position: absolute;
+            top: 20px;
+            font-weight: 500;
+        }
+         *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Montserrat", sans-serif;
+        }
+        #pass{
+            width: 275px;
+            margin: 0 16px;
+            outline: none;
+            font-size: 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 15px;
+            color: white;
+            transition: all ease-in-out 0.2s;
+        }
+        #pass:hover{
+            border-bottom: 2px solid white;
+        }
+        #pass:focus{
+            border-bottom: 2px solid white;
+        }
+        #accept {
+            width: 125px; padding: 16px; border-radius: 8px; border: none; font-weight: bold; color: white;  background: transparent;
+            transition: all ease-in-out 0.2s;
+        }
+        #accept:hover{
+            background-color: #ffffff60;
+            
+        }
+    </style>
+</head>
+<body>
+    <div style="width: 100%;height: 100vh; background: #0e0c0c; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <% if (error) { %>
+            <p class="error"><%= decodeURIComponent(error.replace(/\+/g, ' ')) %></p>
+        <% } %>
+        <form method="POST" action="/login" style="display: flex; margin-top: 20px;">
+            <input id="pass" type="password" name="password" placeholder="Enter Admin Key" required>
+            <button type="submit" id="accept">Access</button>
+        </form>
+    </div>
+</body>
+</html>
