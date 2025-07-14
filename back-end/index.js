@@ -74,10 +74,10 @@ io.on("connection", (socket) => {
     let indexRoom = rooms.findIndex((obj) => obj.roomId === data.roomId);
     let rank = rooms[indexRoom].members.length === 0 ?"host":"guest"
     if (indexRoom !== -1) {
-      const newMember = new memberData("", socket.id, rank);
+      const newMember = new memberData(data.name, socket.id, rank);
       rooms[indexRoom].members.push(newMember);
     }
-    console.log(`User ${socket.id} joined room ${data.roomId}`);
+    console.log(`User ${data.name}:${socket.id} joined room ${data.roomId}`);
   });
 
   // socket.on("user-leaving",(roomId)=>{

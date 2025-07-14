@@ -1,10 +1,11 @@
 import React from "react";
 
-const FuncButton = ({ diameter, children, className }) => {
+const FuncButton = ({ diameter, children, className,onClick }) => {
   return (
     <button
       style={{ width: diameter, height: diameter }}
-      className={` cursor-pointer rounded-full border-3 border-gray-200 flex items-center justify-center ${className}`}
+      className={` cursor-pointer rounded-full flex items-center justify-center ${className}`}
+      onClick={onClick}
     >
       {children}
     </button>

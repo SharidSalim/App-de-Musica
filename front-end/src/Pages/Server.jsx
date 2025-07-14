@@ -7,7 +7,7 @@ import { IoPlaySkipForward } from "react-icons/io5";
 import { IoChatbubbleSharp } from "react-icons/io5";
 import { FaVolumeUp } from "react-icons/fa";
 import { ImExit } from "react-icons/im";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { GrHelpBook } from "react-icons/gr";
 import { FaSearch } from "react-icons/fa";
 import { useParams } from "react-router";
@@ -17,8 +17,8 @@ import { useRef } from "react";
 
 const Server = () => {
   const { roomId } = useParams();
-  console.log(roomId);
-
+    
+  const location = useLocation()
   const navigate = useNavigate();
   const socketRef = useRef(null);
   useEffect(() => {
@@ -26,7 +26,7 @@ const Server = () => {
       reconnectionAttempts: 5,
       timeout: 10000
     });
-    socketRef.current.emit("join-room", { roomId });
+    socketRef.current.emit("join-room", { roomId, name: location.state.userName });
 
     return () => {
       if (socketRef.current) {
@@ -124,7 +124,7 @@ const Server = () => {
             />
             <FuncButton
               className={
-                "group hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                "group border-3 border-gray-200 hover:bg-[#ffffff60] hover:border-white transition duration-300"
               }
               diameter={"40px"}
             >
