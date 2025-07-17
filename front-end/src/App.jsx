@@ -12,50 +12,11 @@ const App = () => {
   const [roomUI, setRoomUI] = useState("");
   const [userName, setUserName] = useState("");
 
+  const URL = "http://localhost:3001"
+
   return (
     <div className="">
-      {/* <button
-        onClick={async () => {
-          const res = await axios.post("http://localhost:3001/create-room");
-      
-          navigate(`/room/${res.data.roomId}`);
-      
-        }}
-      >
-        Create Room
-      </button>
-      <input type="text" onChange={(e)=>{
-        setCode(e.target.value)
-      }} />
-      <button className="mt-4" onClick={async ()=>{
-        const res = await axios.get(`http://localhost:3001/rooms/${code}`)
-        
-        if(res.data !==""){
-          navigate('/room/'+code)
-        } else {
-          console.log("server doesn't exist");
-          
-        }
-        
-        // if( res.data.some((data)=>
-             
-          
-        //   String(data.roomId) === String(code)
-        // )) {
-        //   navigate('/room/'+code)
-        // } else{
-        //   console.log('ROOM DOESNT EXIST');          
-        // }
-
-        
-      }}>
-        Join Room
-      </button> */}
-      <section
-        id="background"
-        className="w-screen relative bg-[url(./assets/home_bg.jpg)] background h-screen"
-      >
-        <nav className="w-screen absolute z-30  py-[24px]">
+       <nav className="w-full px-3.5 absolute z-30  py-[24px]">
           <div className="container flex justify-between">
             <div>
               <Link
@@ -81,10 +42,15 @@ const App = () => {
             </ul>
           </div>
         </nav>
+      <section
+        id="background"
+        className="w-screen relative bg-[url(./assets/home_bg.jpg)] background h-screen px-3.5"
+      >
+       
         <div className="container">
           <div
             id="wrapper"
-            className="w-full h-screen flex items-center justify-between"
+            className="w-full h-screen flex  items-center justify-between"
           >
             <div>
               <p className="font-bold font-poppins text-7xl text-white">
@@ -96,7 +62,7 @@ const App = () => {
             <div className="flex gap-x-2.5 items-center font-poppins">
               <p className="text-white">Click here to start</p>
               <FuncButton
-                className="group bg-gray-100 hover:bg-white hover:translate-x-2.5 transition duration-300"
+                className="group bg-gray-100 hover:bg-white hover:translate-x-1.5 transition duration-300"
                 diameter={"40px"}
                 onClick={() => setOpenModal(!openModal)}
               >
@@ -156,7 +122,7 @@ const App = () => {
                     <div className="flex flex-col gap-y-2 items-center">
                       <input
                         type="text"
-                        onChange={(e) => setUserName(e.target.value)}
+                        onChange={(e) => setUserName(e.target.value.trim())}
                         name=""
                         className=" pb-[8px] pt-1.5 outline-none w-2xs border-b-2 border-b-transparent placeholder:text-center hover:border-b-[#CCCCCC] focus:border-b-[#CCCCCC] transition duration-300"
                         placeholder="Enter your Display Name"
@@ -165,7 +131,7 @@ const App = () => {
                         className="rounded-lg py-[15px] px-[24.5px] hover:bg-[#CCEBE6] hover:text-white transition duration-300"
                         onClick={async () => {
                           const res = await axios.post(
-                            "http://localhost:3001/create-room"
+                            URL+"/create-room"
                           );
                           navigate(`/room/${res.data.roomId}`, {
                             state: { userName },
@@ -186,14 +152,14 @@ const App = () => {
                     <div className="flex flex-col gap-y-2 items-center">
                       <input
                         type="text"
-                        onChange={(e) => setUserName(e.target.value)}
+                        onChange={(e) => setUserName(e.target.value.trim())}
                         name=""
                         className=" pb-[8px] pt-1.5 outline-none w-2xs border-b-2 border-b-transparent placeholder:text-center hover:border-b-[#CCCCCC] focus:border-b-[#CCCCCC] transition duration-300"
                         placeholder="Enter your Display Name"
                       />
                       <input
                         type="text"
-                        onChange={(e) => setCode(e.target.value)}
+                        onChange={(e) => setCode(e.target.value.trim())}
                         name=""
                         className=" pb-[8px] pt-1.5 outline-none w-2xs border-b-2 border-b-transparent placeholder:text-center hover:border-b-[#CCCCCC] focus:border-b-[#CCCCCC] transition duration-300"
                         placeholder="Enter Room ID"
@@ -202,11 +168,11 @@ const App = () => {
                         className="rounded-lg py-[15px] px-[24.5px] hover:bg-[#CCEBE6] hover:text-white transition duration-300"
                         onClick={async () => {
                           const res = await axios.get(
-                            `http://localhost:3001/rooms/${code}`
+                            `${URL}/rooms/${code}`
                           );
 
                           if (res.data !== "") {
-                            navigate("/room/" + code, {state:{userName}});
+                            navigate("/room/" + code, { state: { userName } });
                           } else {
                             console.log("server doesn't exist");
                           }

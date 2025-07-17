@@ -10,6 +10,8 @@
   --animate-appear: appear 0.3s ease-in-out forwards;
   --animate-appear2:  appear2 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 
+
+
   @keyframes appear {
     from{
       opacity: 0;
@@ -29,6 +31,7 @@
     }
     
   } */
+   
     @keyframes appear2 {
     0% {
       transform: translateY(-30px) scale(0.98);
@@ -80,4 +83,9 @@
   max-width: 1225px;
   width: 100%;
   margin: 0 auto;
+  
+}
+
+.scrollbar::-webkit-scrollbar{
+  display: none;
 }

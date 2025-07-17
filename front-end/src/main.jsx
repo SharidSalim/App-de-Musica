@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import Server from "./Pages/Server.jsx";
 
 
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -14,7 +15,7 @@ const router = createBrowserRouter([
   {
     path: "/room/:roomId",
     element: <Server />,
-  },
+  }
 ]);
 
 createRoot(document.getElementById("root")).render(
