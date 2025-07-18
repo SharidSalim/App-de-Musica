@@ -18,11 +18,11 @@ import Chat from "../components/Chat";
 const Server = () => {
   const { roomId } = useParams();
 
-  const [userData, setUserData] = useState({});
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
   const [chatsInit, setChatsInit] = useState([]);
   const [msg, setMsg] = useState("");
+  const [userData,setUserData] = useState("")
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,7 +41,8 @@ const Server = () => {
       socketRef.current.emit("join-room", { roomId, name: name });
     }
     socketRef.current.on("userData-retrieve", (data) => {
-      setUserData(data);
+      sessionStorage.setItem("userData", JSON.stringify(data))  
+      setUserData(sessionStorage.getItem("userData"))    
     });
 
     socketRef.current.on("set-chat", (chat) => setChatsInit(chat));
@@ -54,7 +55,6 @@ const Server = () => {
         socketRef.current = null;
         console.log("fired disconnect");
       }
-      setUserData({});
     };
   }, [socketRef, roomId]);
 
@@ -113,7 +113,7 @@ const Server = () => {
               name=""
               placeholder="Enter song URL"
               id="SearchSong"
-              className="outline-none  placeholder:text-gray-50 font-poppins text-md text-white"
+              className="outline-none  placeholder:text-gray-50 font-poppins text-md "
             />
             <FaSearch size={22} className="text-gray-100  cursor-pointer" />
           </div>
@@ -132,13 +132,12 @@ const Server = () => {
               </p>
             </div>
             <div className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]">
-              {userData && userData.name && userData.rank && (
-                <MemberCard rank={userData.rank} name={userData.name} />
-              )}
+              
+                {userData&& <MemberCard rank={JSON.parse(userData).rank} name={JSON.parse(userData).name} />}
 
               {initMember.map(
                 (memberData) =>
-                  memberData.id !== userData.id && (
+                  memberData.id !== JSON.parse(sessionStorage.getItem("userData")).id && (
                     <MemberCard rank={memberData.rank} name={memberData.name} />
                   )
               )}
@@ -152,14 +151,16 @@ const Server = () => {
             <h1 className="text-[21px] h-[31.5px] font-poppins text-white font-semibold ml-[14px]">
               Chats
             </h1>
-            <div className="flex flex-col justify-end  h-[calc(100%-31.5px-35px)]">
-              <div className="flex flex-col overflow-y-auto scrollbar gap-y-3">
+            <div className="flex flex-col justify-end h-[calc(100%-31.5px-35px)]">
+              <div className="flex flex-col pb-1 overflow-y-auto scrollbar gap-y-3">
                 {/* <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
                 <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
                 <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
                <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque la'/> */}
                 {chatsInit.map((msg) => (
-                  <Chat msg={msg.msg} name={msg.name} />
+                  msg.senderId === JSON.parse(sessionStorage.getItem("userData")).id?
+                  <Chat msg={msg.msg} name={msg.sender} currentClient={true} />:
+                   <Chat msg={msg.msg} name={msg.sender} />
                 ))}
               </div>
             </div>
@@ -178,14 +179,13 @@ const Server = () => {
               />
               <IoSendSharp
                 onClick={() => {
-                  if (
-                    userData?.name &&
-                    userData?.rank &&
-                    msg.trim().length > 0 &&
-                    socketRef.current
+                  if ( msg !=='' 
                   ) {
+                    const b = JSON.parse(sessionStorage.getItem("userData"))?.name
+                    console.log(b);
+                    
                     socketRef.current.emit("send-msg", {
-                      name: userData.name,
+                      name: b,
                       roomId,
                       msg,
                     });
@@ -233,7 +233,7 @@ const Server = () => {
                 "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
               }
               diameter={"40px"}
-              onClick={() => console.log(userData)}
+              
             >
               <FaPlay
                 size={16}

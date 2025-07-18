@@ -4,6 +4,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
 const { name } = require("ejs");
+const { log } = require("console");
 
 const app = express();
 const server = http.createServer(app);
@@ -13,7 +14,7 @@ const io = socketIo(server, {
   },
 });
 
-const PORT = 3001
+const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -28,11 +29,11 @@ class memberData {
   }
 }
 
-class chatData{
-  constructor(sender, senderId, msg){
-    this.sender = sender
-    this.senderId = senderId
-    this.msg = msg
+class chatData {
+  constructor(sender, senderId, msg) {
+    this.sender = sender;
+    this.senderId = senderId;
+    this.msg = msg;
   }
 }
 
@@ -85,27 +86,26 @@ io.on("connection", (socket) => {
     if (indexRoom !== -1) {
       const newMember = new memberData(data.name, socket.id, rank);
       rooms[indexRoom].members.push(newMember);
-     socket.socketSession = newMember;
-     
-     socket.emit("userData-retrieve", {
-      name: data.name,
-      rank: rank,
-      id: socket.id
-     });
-    socket.emit("set-chat", rooms[indexRoom]?.chats)
-     io.to(data.roomId).emit("update-join",  rooms[indexRoom]?.members)
+      socket.socketSession = newMember;
 
+      socket.emit("userData-retrieve", {
+        name: data.name,
+        rank: rank,
+        id: socket.id,
+      });
+      socket.emit("set-chat", rooms[indexRoom]?.chats);
+      io.to(data.roomId).emit("update-join", rooms[indexRoom]?.members);
     }
     console.log(`User ${data.name}:${socket.id} joined room ${data.roomId}`);
   });
 
-  socket.on("send-msg",(data)=>{
-    const msg = new chatData(data.name,socket.id,data.msg)
-     let indexRoom = rooms.findIndex((obj) => obj.roomId === data.roomId);
-     rooms[indexRoom].chats.push(msg)
-     io.to(data.roomId).emit("set-chat",rooms[indexRoom]?.chats)
-    
-  })
+  socket.on("send-msg", (data) => {
+    const msg = new chatData(data.name, socket.id, data.msg);
+
+    let indexRoom = rooms.findIndex((obj) => obj.roomId === data.roomId);
+    rooms[indexRoom].chats.push(msg);
+    io.to(data.roomId).emit("set-chat", rooms[indexRoom]?.chats);
+  });
 
   socket.on("disconnect", () => {
     let roomId = null;
@@ -117,7 +117,7 @@ io.on("connection", (socket) => {
           `${socket.socketSession.name}(${socket.socketSession.id}) left the room ${roomId}`
         );
         room.members.splice(index, 1);
-        io.to(roomId).emit("update-join",  room.members)
+        io.to(roomId).emit("update-join", room.members);
 
         if (room.members.length === 0) {
           console.log(`Room ${room.roomId} is empty, deleting it.`);
