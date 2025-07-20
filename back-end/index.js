@@ -3,8 +3,6 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
-const ytdlp = require("yt-dlp-exec");
-const ffmpegPath = require("ffmpeg-static");
 const fs = require("fs");
 const path = require("path");
 const {
@@ -14,7 +12,8 @@ const {
   songData,
   memberData,
   chatData,
-  rankPriority
+  rankPriority,
+  downloadSong
 } = require("./modules/utilities");
 
 const app = express();
@@ -92,6 +91,9 @@ io.on("connection", (socket) => {
     const msg = new chatData(data.name, socket.id, data.msg);
 
     getRoom(data.roomId, rooms).chats.push(msg);
+    if( getRoom(data.roomId, rooms).chats.length>50){
+      getRoom(data.roomId, rooms).chats.shift()
+    }
     io.to(data.roomId).emit("set-chat", rooms[indexRoom]?.chats);
   });
 
@@ -114,13 +116,22 @@ io.on("connection", (socket) => {
       data.addedBy,
       data.title,
       data.channel,
-      data.thumbnail
+      data.thumbnail,
+      data.videoId
     );
 
     song.serial = room?.queue.length + 1;
     room.queue.push(song);
     io.to(data.roomId).emit("set-queue", room?.queue);
-    console.log(song);
+    if(room.queue.length===1){
+
+      downloadSong(song.url,__dirname,data.roomId,song.videoId,()=>{
+        song.path = `http://localhost:${PORT}/audio/${data.roomId}/${data.videoId}.mp3`
+        io.to(data.roomId).emit("play-song",song)
+
+      })
+
+    }
   });
 
   socket.on("disconnect", () => {

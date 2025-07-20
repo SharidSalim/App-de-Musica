@@ -15,9 +15,12 @@ import { io } from "socket.io-client";
 import MemberCard from "../components/MemberCard";
 import Chat from "../components/Chat";
 import { getVideoDetails, getVideoId } from "../modules/utilities";
+import useAudioPlayer from "../modules/useAudioPlayer";
 
 const Server = () => {
   const { roomId } = useParams();
+
+  const {audio} = useAudioPlayer()
 
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
@@ -52,6 +55,8 @@ const Server = () => {
     socketRef.current.on("set-queue", (e) => setQueueInit(e));
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
+
+    socketRef.current.on("play-song",(song)=>audio.play(song.path))
 
     return () => {
       if (socketRef.current) {
@@ -118,7 +123,7 @@ const Server = () => {
                 if (e.key === "Enter") {
                   if (songURL !== "") {
                     try {
-                      const { title, channel, thumbnail } =
+                      const { title, channel, thumbnail, videoId } =
                         await getVideoDetails(
                           songURL,
                           "AIzaSyALIBF3-m4dY75SMX8cRHtPvhrKdreGxjg"
@@ -131,6 +136,7 @@ const Server = () => {
                         title,
                         channel,
                         thumbnail,
+                        videoId
                       });
                     } catch (err) {
                       alert("Something went wrong");

@@ -40,7 +40,7 @@ async function getVideoDetails(videoUrl, apiKey) {
     const channel = snippet.channelTitle;
     const thumbnail = snippet.thumbnails.high.url;
 
-    return { title, channel, thumbnail };
+    return { title, channel, thumbnail, videoId };
   } catch (err) {
     console.error("Error fetching video details:", err);
   }

@@ -1,12 +1,21 @@
+const ytdlp = require("yt-dlp-exec");
+const ffmpegPath = require("ffmpeg-static");
+const fs = require("fs");
+const path = require("path");
+
+
 
 class songData{
   serial=0
-  constructor(url,addedBy, title, channel, thumbnail){
+  path=''
+  constructor(url,addedBy, title, channel, thumbnail,videoId){
     this.url =url
     this.addedBy = addedBy
      this.title =  title
-  this.channel = thumbnail
+  this.channel = channel
   this.thumbnail = thumbnail
+  this.videoId = videoId
+
   }
 }
 
@@ -61,4 +70,38 @@ function generateRoomCode(n) {
   return ret;
 }
 
-module.exports = {generateRoomCode, getRandomInt, roomData, songData, memberData,chatData, getRoom, rankPriority}
+
+function downloadSong(url, dir, roomId, videoId, then){
+  const outputFolder = path.resolve(dir, "audio",roomId);
+
+// Ensure the folder exists
+if (!fs.existsSync(outputFolder)) {
+  fs.mkdirSync(outputFolder, { recursive: true });
+}
+
+
+
+// Construct full output path
+const outputPath = path.join(outputFolder ,`${videoId}.%(ext)s`);
+
+ytdlp(url, {
+  output: outputPath,
+  extractAudio: true,
+  audioFormat: "mp3",
+  audioQuality: "0",
+  ffmpegLocation: ffmpegPath,
+})
+  .then((output) => {
+    console.log("✅ Download complete!");
+    console.log(`Saved as: ${videoId}.mp3`);
+    then()
+  })
+  .catch((err) => {
+    console.error("❌ Download failed:", err);
+  });
+
+
+}
+
+
+module.exports = {generateRoomCode, getRandomInt, roomData, songData, memberData,chatData, getRoom, downloadSong ,rankPriority}
