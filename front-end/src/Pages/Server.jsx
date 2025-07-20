@@ -14,6 +14,7 @@ import { GrHelpBook } from "react-icons/gr";
 import { io } from "socket.io-client";
 import MemberCard from "../components/MemberCard";
 import Chat from "../components/Chat";
+import { getVideoDetails, getVideoId } from "../modules/utilities";
 
 const Server = () => {
   const { roomId } = useParams();
@@ -21,8 +22,10 @@ const Server = () => {
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
   const [chatsInit, setChatsInit] = useState([]);
+  const [queueInit, setQueueInit] = useState([]);
   const [msg, setMsg] = useState("");
-  const [userData,setUserData] = useState("")
+  const [userData, setUserData] = useState("");
+  const [songURL, setSongURL] = useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,11 +44,12 @@ const Server = () => {
       socketRef.current.emit("join-room", { roomId, name: name });
     }
     socketRef.current.on("userData-retrieve", (data) => {
-      sessionStorage.setItem("userData", JSON.stringify(data))  
-      setUserData(sessionStorage.getItem("userData"))    
+      sessionStorage.setItem("userData", JSON.stringify(data));
+      setUserData(sessionStorage.getItem("userData"));
     });
 
     socketRef.current.on("set-chat", (chat) => setChatsInit(chat));
+    socketRef.current.on("set-queue", (e) => setQueueInit(e));
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
 
@@ -78,14 +82,12 @@ const Server = () => {
             id="container"
             className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]"
           >
-            {[...Array(9)].map((_, i) => (
+            {queueInit.map((data) => (
               <QueueCard
-                songName="Naga"
-                addedBy={"nigga"}
-                QueueNum={i + 1}
-                image={
-                  "https://i.pinimg.com/736x/e5/88/97/e5889767806916d6047a45a01a81a2e0.jpg"
-                }
+                addedBy={data.addedBy}
+                image={data.thumbnail}
+                songName={data.title}
+                QueueNum={data.serial}
               />
             ))}
           </div>
@@ -111,11 +113,68 @@ const Server = () => {
             <input
               type="url"
               name=""
+              onChange={(e) => setSongURL(e.target.value.trim())}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter") {
+                  if (songURL !== "") {
+                    try {
+                      const { title, channel, thumbnail } =
+                        await getVideoDetails(
+                          songURL,
+                          "AIzaSyALIBF3-m4dY75SMX8cRHtPvhrKdreGxjg"
+                        );
+
+                      socketRef.current.emit("add-song", {
+                        songURL,
+                        addedBy: JSON.parse(userData).name,
+                        roomId,
+                        title,
+                        channel,
+                        thumbnail,
+                      });
+                    } catch (err) {
+                      alert("Something went wrong");
+                    }
+                  } else {
+                    alert("Enter Song URL");
+                  }
+                  setSongURL("");
+                }
+              }}
               placeholder="Enter song URL"
+              value={songURL}
+              autoComplete="off"
               id="SearchSong"
-              className="outline-none  placeholder:text-gray-50 font-poppins text-md "
+              className="outline-none text-[12px] placeholder:text-[16px] placeholder:font-raleway  placeholder:text-gray-50 font-raleway text-md "
             />
-            <FaSearch size={22} className="text-gray-100  cursor-pointer" />
+            <FaSearch
+              onClick={async () => {
+                if (songURL !== "") {
+                  try {
+                    const { title, channel, thumbnail } = await getVideoDetails(
+                      songURL,
+                      "AIzaSyALIBF3-m4dY75SMX8cRHtPvhrKdreGxjg"
+                    );
+
+                    socketRef.current.emit("add-song", {
+                      songURL,
+                      addedBy: JSON.parse(userData).name,
+                      roomId,
+                      title,
+                      channel,
+                      thumbnail,
+                    });
+                  } catch (err) {
+                    alert("Something went wrong");
+                  }
+                } else {
+                  alert("Enter Song URL");
+                }
+                setSongURL("");
+              }}
+              size={22}
+              className="text-gray-100  cursor-pointer hover:text-white transition duration-300"
+            />
           </div>
         </div>
         {!chatSection ? (
@@ -132,15 +191,9 @@ const Server = () => {
               </p>
             </div>
             <div className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]">
-              
-                {userData&& <MemberCard rank={JSON.parse(userData).rank} name={JSON.parse(userData).name} />}
-
-              {initMember.map(
-                (memberData) =>
-                  memberData.id !== JSON.parse(sessionStorage.getItem("userData")).id && (
-                    <MemberCard rank={memberData.rank} name={memberData.name} />
-                  )
-              )}
+              {initMember.map((memberData) => (
+                <MemberCard rank={memberData.rank} name={memberData.name} />
+              ))}
             </div>
           </div>
         ) : (
@@ -153,15 +206,18 @@ const Server = () => {
             </h1>
             <div className="flex flex-col justify-end h-[calc(100%-31.5px-35px)]">
               <div className="flex flex-col pb-1 overflow-y-auto scrollbar gap-y-3">
-                {/* <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
-                <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
-                <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque labore eaque illo consequatur qui possimus ipsum incidunt officiis harum nulla assumenda est omnis, distinctio similique sapiente a placeat.'/>
-               <Chat name="Bogged" msg='Lorem ipsum dolor sit amet consectetur, adipisicing elit. Sed consectetur itaque la'/> */}
-                {chatsInit.map((msg) => (
-                  msg.senderId === JSON.parse(sessionStorage.getItem("userData")).id?
-                  <Chat msg={msg.msg} name={msg.sender} currentClient={true} />:
-                   <Chat msg={msg.msg} name={msg.sender} />
-                ))}
+                {chatsInit.map((msg) =>
+                  msg.senderId ===
+                  JSON.parse(sessionStorage.getItem("userData")).id ? (
+                    <Chat
+                      msg={msg.msg}
+                      name={msg.sender}
+                      currentClient={true}
+                    />
+                  ) : (
+                    <Chat msg={msg.msg} name={msg.sender} />
+                  )
+                )}
               </div>
             </div>
             <div
@@ -171,6 +227,24 @@ const Server = () => {
               <input
                 onChange={(e) => setMsg(e.target.value)}
                 value={msg}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (msg !== "") {
+                      const b = JSON.parse(
+                        sessionStorage.getItem("userData")
+                      )?.name;
+
+                      socketRef.current.emit("send-msg", {
+                        name: b,
+                        roomId,
+                        msg,
+                      });
+                      setMsg("");
+                    } else {
+                      console.warn("UserData not ready or message empty.");
+                    }
+                  }
+                }}
                 className="outline-none"
                 placeholder="Message..."
                 type="text"
@@ -179,11 +253,11 @@ const Server = () => {
               />
               <IoSendSharp
                 onClick={() => {
-                  if ( msg !=='' 
-                  ) {
-                    const b = JSON.parse(sessionStorage.getItem("userData"))?.name
-                    console.log(b);
-                    
+                  if (msg !== "") {
+                    const b = JSON.parse(
+                      sessionStorage.getItem("userData")
+                    )?.name;
+
                     socketRef.current.emit("send-msg", {
                       name: b,
                       roomId,
@@ -233,7 +307,6 @@ const Server = () => {
                 "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
               }
               diameter={"40px"}
-              
             >
               <FaPlay
                 size={16}
@@ -242,6 +315,7 @@ const Server = () => {
             </FuncButton>
             <IoPlaySkipForward
               size={28}
+              onClick={() => socketRef.current.emit("skip-song", roomId)}
               className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
             />
           </div>

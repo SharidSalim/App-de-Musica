@@ -123,6 +123,17 @@ const App = () => {
                       <input
                         type="text"
                         onChange={(e) => setUserName(e.target.value.trim())}
+                        onKeyDown={async(e)=>{
+                          if(e.key==="Enter"){
+                            const res = await axios.post(
+                            URL+"/create-room"
+                          );
+                          navigate(`/room/${res.data.roomId}`, {
+                            state: { userName },
+                          });
+                          }
+
+                        }}
                         name=""
                         className=" pb-[8px] pt-1.5 outline-none w-2xs border-b-2 border-b-transparent placeholder:text-center hover:border-b-[#CCCCCC] focus:border-b-[#CCCCCC] transition duration-300"
                         placeholder="Enter your Display Name"
