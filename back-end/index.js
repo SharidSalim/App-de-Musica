@@ -13,7 +13,7 @@ const {
   memberData,
   chatData,
   rankPriority,
-  downloadSong
+  downloadSong,
 } = require("./modules/utilities");
 
 const app = express();
@@ -73,15 +73,14 @@ io.on("connection", (socket) => {
         rank: rank,
         id: socket.id,
       });
-      
+
       socket.emit("set-chat", rooms[indexRoom]?.chats);
       socket.emit("set-queue", rooms[indexRoom]?.queue);
-      
 
-      const members = rooms[indexRoom]?.members
-      members.sort((a,b)=>{
-         return rankPriority[a.rank] - rankPriority[b.rank];
-      })
+      const members = rooms[indexRoom]?.members;
+      members.sort((a, b) => {
+        return rankPriority[a.rank] - rankPriority[b.rank];
+      });
       io.to(data.roomId).emit("update-join", members);
     }
     console.log(`User ${data.name}:${socket.id} joined room ${data.roomId}`);
@@ -91,8 +90,8 @@ io.on("connection", (socket) => {
     const msg = new chatData(data.name, socket.id, data.msg);
 
     getRoom(data.roomId, rooms).chats.push(msg);
-    if( getRoom(data.roomId, rooms).chats.length>50){
-      getRoom(data.roomId, rooms).chats.shift()
+    if (getRoom(data.roomId, rooms).chats.length > 50) {
+      getRoom(data.roomId, rooms).chats.shift();
     }
     io.to(data.roomId).emit("set-chat", rooms[indexRoom]?.chats);
   });
@@ -106,6 +105,9 @@ io.on("connection", (socket) => {
         song.serial = index + 1;
       });
       io.to(data).emit("set-queue", room?.queue);
+      console.log(room.queue[0].path(PORT,data));
+      
+      io.to(data).emit("play-song", room.queue[0].path(PORT,data));
     }
   });
 
@@ -122,15 +124,37 @@ io.on("connection", (socket) => {
 
     song.serial = room?.queue.length + 1;
     room.queue.push(song);
-    io.to(data.roomId).emit("set-queue", room?.queue);
-    if(room.queue.length===1){
 
-      downloadSong(song.url,__dirname,data.roomId,song.videoId,()=>{
-        song.path = `http://localhost:${PORT}/audio/${data.roomId}/${data.videoId}.mp3`
-        io.to(data.roomId).emit("play-song",song)
-
-      })
-
+    if (!room.nowPlaying) {
+      room.nowPlaying = song;
+      downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
+        room.loadedSongs += 1;
+        io.to(data.roomId).emit("set-queue", room?.queue);
+        io.to(data.roomId).emit("play-song", song.path(PORT, data.roomId));
+      });
+    } else {
+      if (room.loadedSongs <= 4) {
+        downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
+          io.to(data.roomId).emit("set-queue", room?.queue);
+          room.loadedSongs += 1;
+        });
+      } else io.to(data.roomId).emit("set-queue", room?.queue);
+    }
+  });
+  socket.on("track-ended", (roomid) => {
+    let room = getRoom(roomid, rooms);
+    room.nowPlaying = undefined;
+    if (room.queue.length > 0) {
+      room.queue.shift();
+      room.queue.forEach((song, index) => {
+        song.serial = index + 1;
+      });
+      if (!nowPlaying) {
+        if (room.queue.length !== 0) {
+          io.to(roomid).emit("play-song", room.queue[0].path(PORT, roomid));
+          io.to(roomid).emit("set-queue", room?.queue);
+        }
+      }
     }
   });
 

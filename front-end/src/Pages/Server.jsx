@@ -20,7 +20,7 @@ import useAudioPlayer from "../modules/useAudioPlayer";
 const Server = () => {
   const { roomId } = useParams();
 
-  const {audio} = useAudioPlayer()
+  const { audio } = useAudioPlayer();
 
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
@@ -56,7 +56,11 @@ const Server = () => {
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
 
-    socketRef.current.on("play-song",(song)=>audio.play(song.path))
+    socketRef.current.on("play-song", (path) =>
+      audio.play(path, () => {
+        socketRef.current.on("track-ended",  roomId );
+      })
+    );
 
     return () => {
       if (socketRef.current) {
@@ -64,6 +68,7 @@ const Server = () => {
         socketRef.current = null;
         console.log("fired disconnect");
       }
+      audio.stop()
     };
   }, [socketRef, roomId]);
 
@@ -126,7 +131,7 @@ const Server = () => {
                       const { title, channel, thumbnail, videoId } =
                         await getVideoDetails(
                           songURL,
-                          "AIzaSyALIBF3-m4dY75SMX8cRHtPvhrKdreGxjg"
+                          import.meta.env.VITE_REACT_YT_API_KEY
                         );
 
                       socketRef.current.emit("add-song", {
@@ -136,7 +141,7 @@ const Server = () => {
                         title,
                         channel,
                         thumbnail,
-                        videoId
+                        videoId,
                       });
                     } catch (err) {
                       alert("Something went wrong");

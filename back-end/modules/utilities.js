@@ -3,19 +3,18 @@ const ffmpegPath = require("ffmpeg-static");
 const fs = require("fs");
 const path = require("path");
 
-
-
-class songData{
-  serial=0
-  path=''
-  constructor(url,addedBy, title, channel, thumbnail,videoId){
-    this.url =url
-    this.addedBy = addedBy
-     this.title =  title
-  this.channel = channel
-  this.thumbnail = thumbnail
-  this.videoId = videoId
-
+class songData {
+  serial = 0;
+  constructor(url, addedBy, title, channel, thumbnail, videoId) {
+    this.url = url;
+    this.addedBy = addedBy;
+    this.title = title;
+    this.channel = channel;
+    this.thumbnail = thumbnail;
+    this.videoId = videoId;
+  }
+  path(PORT, roomId) {
+    return `http://localhost:${PORT}/audio/${roomId}/${this.videoId}.mp3`;
   }
 }
 
@@ -39,6 +38,8 @@ class roomData {
   chats = [];
   members = [];
   queue = [];
+  nowPlaying = undefined;
+  loadedSongs=0
 
   constructor(roomId) {
     this.roomId = roomId;
@@ -49,16 +50,16 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function getRoom(roomId, rooms){
- let indexRoom = rooms.findIndex((obj) => obj.roomId === roomId);
- return rooms[indexRoom]
+function getRoom(roomId, rooms) {
+  let indexRoom = rooms.findIndex((obj) => obj.roomId === roomId);
+  return rooms[indexRoom];
 }
 
 const rankPriority = {
   host: 1,
-  dj:2,
-  guest: 3
-}
+  dj: 2,
+  guest: 3,
+};
 
 function generateRoomCode(n) {
   const x = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -70,38 +71,42 @@ function generateRoomCode(n) {
   return ret;
 }
 
+function downloadSong(url, dir, roomId, videoId, then) {
+  const outputFolder = path.resolve(dir, "audio", roomId);
 
-function downloadSong(url, dir, roomId, videoId, then){
-  const outputFolder = path.resolve(dir, "audio",roomId);
+  // Ensure the folder exists
+  if (!fs.existsSync(outputFolder)) {
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
 
-// Ensure the folder exists
-if (!fs.existsSync(outputFolder)) {
-  fs.mkdirSync(outputFolder, { recursive: true });
-}
+  // Construct full output path
+  const outputPath = path.join(outputFolder, `${videoId}.%(ext)s`);
 
-
-
-// Construct full output path
-const outputPath = path.join(outputFolder ,`${videoId}.%(ext)s`);
-
-ytdlp(url, {
-  output: outputPath,
-  extractAudio: true,
-  audioFormat: "mp3",
-  audioQuality: "0",
-  ffmpegLocation: ffmpegPath,
-})
-  .then((output) => {
-    console.log("✅ Download complete!");
-    console.log(`Saved as: ${videoId}.mp3`);
-    then()
+  ytdlp(url, {
+    output: outputPath,
+    extractAudio: true,
+    audioFormat: "mp3",
+    audioQuality: "0",
+    ffmpegLocation: ffmpegPath,
   })
-  .catch((err) => {
-    console.error("❌ Download failed:", err);
-  });
-
-
+    .then((output) => {
+      console.log("✅ Download complete!");
+      console.log(`Saved as: ${videoId}.mp3`);
+      then();
+    })
+    .catch((err) => {
+      console.error("❌ Download failed:", err);
+    });
 }
 
-
-module.exports = {generateRoomCode, getRandomInt, roomData, songData, memberData,chatData, getRoom, downloadSong ,rankPriority}
+module.exports = {
+  generateRoomCode,
+  getRandomInt,
+  roomData,
+  songData,
+  memberData,
+  chatData,
+  getRoom,
+  downloadSong,
+  rankPriority,
+};
