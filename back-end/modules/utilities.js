@@ -3,15 +3,33 @@ const ffmpegPath = require("ffmpeg-static");
 const fs = require("fs");
 const path = require("path");
 
+class roomData {
+  chats = [];
+  members = [];
+  queue = [];
+  nowPlaying = undefined;
+  loadedSongs = 0;
+  startTime = undefined;
+  timeoutId = undefined;
+
+  constructor(roomId) {
+    this.roomId = roomId;
+  }
+}
+
 class songData {
   serial = 0;
-  constructor(url, addedBy, title, channel, thumbnail, videoId) {
+
+  isDownloaded = false;
+
+  constructor(url, addedBy, title, channel, thumbnail, videoId, duration) {
     this.url = url;
     this.addedBy = addedBy;
     this.title = title;
     this.channel = channel;
     this.thumbnail = thumbnail;
     this.videoId = videoId;
+    this.duration = duration;
   }
   path(PORT, roomId) {
     return `http://localhost:${PORT}/audio/${roomId}/${this.videoId}.mp3`;
@@ -31,18 +49,6 @@ class chatData {
     this.sender = sender;
     this.senderId = senderId;
     this.msg = msg;
-  }
-}
-
-class roomData {
-  chats = [];
-  members = [];
-  queue = [];
-  nowPlaying = undefined;
-  loadedSongs=0
-
-  constructor(roomId) {
-    this.roomId = roomId;
   }
 }
 
@@ -71,7 +77,7 @@ function generateRoomCode(n) {
   return ret;
 }
 
-function downloadSong(url, dir, roomId, videoId, then) {
+function downloadSong(url, dir, roomId, videoId, then, Catch) {
   const outputFolder = path.resolve(dir, "audio", roomId);
 
   // Ensure the folder exists
@@ -95,6 +101,7 @@ function downloadSong(url, dir, roomId, videoId, then) {
       then();
     })
     .catch((err) => {
+      Catch();
       console.error("❌ Download failed:", err);
     });
 }

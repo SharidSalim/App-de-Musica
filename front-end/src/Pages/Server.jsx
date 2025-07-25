@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import QueueCard from "../components/QueueCard";
 import FuncButton from "../components/FuncButton";
-import { FaPlay, FaSearch, FaUserFriends, FaVolumeUp } from "react-icons/fa";
+import {
+  FaPause,
+  FaPlay,
+  FaSearch,
+  FaUserFriends,
+  FaVolumeUp,
+} from "react-icons/fa";
 import {
   IoPlaySkipBack,
   IoPlaySkipForward,
@@ -14,7 +20,7 @@ import { GrHelpBook } from "react-icons/gr";
 import { io } from "socket.io-client";
 import MemberCard from "../components/MemberCard";
 import Chat from "../components/Chat";
-import { getVideoDetails, getVideoId } from "../modules/utilities";
+import { getVideoDetails, formatTime } from "../modules/utilities";
 import useAudioPlayer from "../modules/useAudioPlayer";
 
 const Server = () => {
@@ -22,6 +28,7 @@ const Server = () => {
 
   const { audio } = useAudioPlayer();
 
+  const [pauseState, setPauseState] = useState(false);
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
   const [chatsInit, setChatsInit] = useState([]);
@@ -56,11 +63,18 @@ const Server = () => {
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
 
-    socketRef.current.on("play-song", (path) =>
-      audio.play(path, () => {
-        socketRef.current.on("track-ended",  roomId );
-      })
-    );
+    socketRef.current.on("play-song", ({ path, startTime }) => {
+      const offset = (Date.now() - startTime) / 1000;
+      console.log(path, offset);
+
+      audio.play(path, offset); // start playback from offset
+    });
+
+    // socketRef.current.on("play-song", (path) =>
+    //   audio.play(path, () => {
+    //     socketRef.current.emit("track-ended", roomId);
+    //   })
+    // );
 
     return () => {
       if (socketRef.current) {
@@ -68,7 +82,7 @@ const Server = () => {
         socketRef.current = null;
         console.log("fired disconnect");
       }
-      audio.stop()
+      audio.stop();
     };
   }, [socketRef, roomId]);
 
@@ -102,6 +116,7 @@ const Server = () => {
             ))}
           </div>
         </div>
+
         <div
           id="Spinner"
           className="w-[calc(100%-(241px*2))] shadow-md relative bg-[#ffffff05]  mx-3 rounded-xl"
@@ -128,20 +143,21 @@ const Server = () => {
                 if (e.key === "Enter") {
                   if (songURL !== "") {
                     try {
-                      const { title, channel, thumbnail, videoId } =
+                      const { title, channel, thumbnail, videoId, duration } =
                         await getVideoDetails(
                           songURL,
                           import.meta.env.VITE_REACT_YT_API_KEY
                         );
 
                       socketRef.current.emit("add-song", {
-                        songURL,
+                        url: songURL,
                         addedBy: JSON.parse(userData).name,
                         roomId,
                         title,
                         channel,
                         thumbnail,
                         videoId,
+                        duration,
                       });
                     } catch (err) {
                       alert("Something went wrong");
@@ -188,6 +204,7 @@ const Server = () => {
             />
           </div>
         </div>
+
         {!chatSection ? (
           <div
             id="Friends"
@@ -286,6 +303,7 @@ const Server = () => {
           </div>
         )}
       </div>
+
       <div
         id="PlayBar"
         className="h-[86px] p-2 flex shadow-lg justify-between items-center bg-[#ffffff15] rounded-xl mt-3"
@@ -313,17 +331,39 @@ const Server = () => {
               size={28}
               className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
             />
-            <FuncButton
-              className={
-                "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
-              }
-              diameter={"40px"}
-            >
-              <FaPlay
-                size={16}
-                className="text-gray-100 group-hover:text-white transition duration-300"
-              />
-            </FuncButton>
+            {!pauseState ? (
+              <FuncButton
+                onClick={(e) => {
+                  setPauseState(!pauseState);
+                  pauseState ? audio.pause() : audio.resume();
+                }}
+                className={
+                  "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                }
+                diameter={"40px"}
+              >
+                <FaPlay
+                  size={16}
+                  className="text-gray-100 group-hover:text-white transition duration-300"
+                />
+              </FuncButton>
+            ) : (
+              <FuncButton
+                onClick={(e) => {
+                  setPauseState(!pauseState);
+                  pauseState ? audio.pause() : audio.resume();
+                }}
+                className={
+                  "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                }
+                diameter={"40px"}
+              >
+                <FaPause
+                  size={16}
+                  className="text-gray-100 group-hover:text-white transition duration-300"
+                />
+              </FuncButton>
+            )}
             <IoPlaySkipForward
               size={28}
               onClick={() => socketRef.current.emit("skip-song", roomId)}
@@ -331,13 +371,25 @@ const Server = () => {
             />
           </div>
           <div className="flex items-center">
-            <p className="font-poppins font-medium text-[12.5px] text-white">
-              1:00
+            <p
+              id="timer"
+              className="font-poppins font-medium w-6 text-[12.5px] text-white"
+            >
+              {formatTime(audio.currentTime)}
             </p>
-            <input className="w-[475px] h-1 mx-3" type="range" name="" id="" />
+            <input
+              className="w-[475px] h-1 mx-3"
+              value={audio.progress * 100}
+              type="range"
+              name=""
+              id=""
+            />
 
-            <p className="font-poppins font-medium text-[12.5px] text-white">
-              1:45
+            <p
+              id="duration"
+              className="font-poppins w-6 font-medium text-[12.5px] text-white"
+            >
+              {formatTime(audio.duration)}
             </p>
           </div>
         </div>

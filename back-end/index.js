@@ -29,6 +29,45 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 app.use("/audio", express.static("audio"));
+app.use(
+  "/audio",
+  express.static("audio", {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".mp3")) {
+        res.setHeader("Content-Type", "audio/mpeg");
+      }
+    },
+  })
+);
+
+function tryPlayNext(room) {
+  if (!room || !room.queue.length) {
+    console.log("tryPlayNext Didn't run!");
+    return;
+  }
+
+  const next = room.queue[0];
+
+  console.log("Now Playing: ", room.nowPlaying);
+
+  if (next.isDownloaded && room.nowPlaying === undefined) {
+    room.nowPlaying = next;
+    room.startTime = Date.now();
+    io.to(room.roomId).emit("play-song", {
+      path: next.path(PORT, room.roomId),
+      startTime: room.startTime,
+    });
+    console.log("Ran play-song");
+
+    room.timeoutId = setTimeout(() => {
+      room.queue.shift();
+      room.queue.forEach((s, i) => (s.serial = i + 1));
+      room.nowPlaying = undefined;
+      io.to(room.roomId).emit("set-queue", room.queue);
+      tryPlayNext(room); // Play next track
+    }, next.duration * 1000);
+  }
+}
 
 const rooms = [];
 
@@ -51,8 +90,8 @@ app.get("/rooms", (req, res) => {
 
 app.get("/rooms/:id", (req, res) => {
   const roomInfo = rooms.find((obj) => obj.roomId === req.params.id);
-
-  res.send(roomInfo);
+  const { timeoutId, ...safeRoomInfo } = roomInfo;
+  res.send(safeRoomInfo);
 });
 
 // Socket.io connection
@@ -77,6 +116,14 @@ io.on("connection", (socket) => {
       socket.emit("set-chat", rooms[indexRoom]?.chats);
       socket.emit("set-queue", rooms[indexRoom]?.queue);
 
+      const currentSong = rooms[indexRoom]?.nowPlaying;
+      if (currentSong) {
+        socket.emit("play-song", {
+          path: currentSong.path(PORT, rooms[indexRoom].roomId),
+          startTime: rooms[indexRoom].startTime,
+        });
+      }
+
       const members = rooms[indexRoom]?.members;
       members.sort((a, b) => {
         return rankPriority[a.rank] - rankPriority[b.rank];
@@ -88,75 +135,147 @@ io.on("connection", (socket) => {
 
   socket.on("send-msg", (data) => {
     const msg = new chatData(data.name, socket.id, data.msg);
+    const room = getRoom(data.roomId, rooms);
 
     getRoom(data.roomId, rooms).chats.push(msg);
     if (getRoom(data.roomId, rooms).chats.length > 50) {
       getRoom(data.roomId, rooms).chats.shift();
     }
-    io.to(data.roomId).emit("set-chat", rooms[indexRoom]?.chats);
+    io.to(data.roomId).emit("set-chat", room.chats);
   });
 
-  socket.on("skip-song", (data) => {
-    let room = getRoom(data, rooms);
+  // socket.on("skip-song", (data) => {
+  //   let room = getRoom(data, rooms);
 
-    if (room.queue.length > 0) {
-      room.queue.shift();
-      room.queue.forEach((song, index) => {
-        song.serial = index + 1;
-      });
-      io.to(data).emit("set-queue", room?.queue);
-      console.log(room.queue[0].path(PORT,data));
-      
-      io.to(data).emit("play-song", room.queue[0].path(PORT,data));
+  //   if (room.queue.length > 0) {
+  //     room.queue.shift();
+  //     room.queue.forEach((song, index) => {
+  //       song.serial = index + 1;
+  //     });
+  //     io.to(data).emit("set-queue", room?.queue);
+  //     console.log(room.queue[0].path(PORT, data));
+
+  //     io.to(data).emit("play-song", room.queue[0].path(PORT, data));
+  //   }
+  // });
+
+  socket.on("skip-song", (data) => {
+    const room = getRoom(data, rooms);
+    if (!room) return;
+
+    room.queue.shift();
+    if (room.queue.length === 0) {
+      room.nowPlaying = undefined;
+      io.to(data).emit("set-queue", room.queue);
+    } else {
+      room.queue.forEach((s, i) => (s.serial = i + 1));
+      room.nowPlaying = undefined;
+
+      io.to(data).emit("set-queue", room.queue);
+      tryPlayNext(room);
     }
   });
 
+  // socket.on("add-song", (data) => {
+  //   let room = getRoom(data.roomId, rooms);
+  //   const song = new songData(
+  //     data.songURL,
+  //     data.addedBy,
+  //     data.title,
+  //     data.channel,
+  //     data.thumbnail,
+  //     data.videoId
+  //   );
+
+  //   song.serial = room?.queue.length + 1;
+  //   room.queue.push(song);
+
+  //   if (!room.nowPlaying) {
+  //     room.nowPlaying = song;
+  //     downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
+  //       room.loadedSongs += 1;
+  //       io.to(data.roomId).emit("set-queue", room?.queue);
+  //       io.to(data.roomId).emit("play-song", song.path(PORT, data.roomId));
+  //     });
+  //   } else {
+  //     if (room.loadedSongs <= 4) {
+  //       downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
+  //         io.to(data.roomId).emit("set-queue", room?.queue);
+  //         room.loadedSongs += 1;
+  //       });
+  //     } else io.to(data.roomId).emit("set-queue", room?.queue);
+  //   }
+  // });
+
   socket.on("add-song", (data) => {
-    let room = getRoom(data.roomId, rooms);
+    const room = getRoom(data.roomId, rooms);
+    if (!room) return;
+
     const song = new songData(
-      data.songURL,
+      data.url,
       data.addedBy,
       data.title,
       data.channel,
       data.thumbnail,
-      data.videoId
+      data.videoId,
+      data.duration
     );
+    song.serial = room.queue.length + 1;
+    song.isDownloaded = false;
 
-    song.serial = room?.queue.length + 1;
     room.queue.push(song);
 
-    if (!room.nowPlaying) {
-      room.nowPlaying = song;
-      downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
+    // Start downloading immediately
+    downloadSong(
+      song.url,
+      __dirname,
+      data.roomId,
+      song.videoId,
+      () => {
+        song.isDownloaded = true;
         room.loadedSongs += 1;
-        io.to(data.roomId).emit("set-queue", room?.queue);
-        io.to(data.roomId).emit("play-song", song.path(PORT, data.roomId));
-      });
-    } else {
-      if (room.loadedSongs <= 4) {
-        downloadSong(song.url, __dirname, data.roomId, song.videoId, () => {
-          io.to(data.roomId).emit("set-queue", room?.queue);
-          room.loadedSongs += 1;
-        });
-      } else io.to(data.roomId).emit("set-queue", room?.queue);
-    }
-  });
-  socket.on("track-ended", (roomid) => {
-    let room = getRoom(roomid, rooms);
-    room.nowPlaying = undefined;
-    if (room.queue.length > 0) {
-      room.queue.shift();
-      room.queue.forEach((song, index) => {
-        song.serial = index + 1;
-      });
-      if (!nowPlaying) {
-        if (room.queue.length !== 0) {
-          io.to(roomid).emit("play-song", room.queue[0].path(PORT, roomid));
-          io.to(roomid).emit("set-queue", room?.queue);
-        }
+        io.to(data.roomId).emit("set-queue", room.queue);
+        tryPlayNext(room);
+      },
+      () => {
+        io.to(data.roomId).emit("set-queue", room.queue);
       }
-    }
+    );
+
+    console.log(room.nowPlaying);
+
+    io.to(data.roomId).emit("set-queue", room.queue);
   });
+
+  // socket.on("track-ended", (roomid) => {
+  //   let room = getRoom(roomid, rooms);
+  //   room.nowPlaying = undefined;
+  //   if (room.queue.length > 0) {
+  //     room.queue.shift();
+  //     room.queue.forEach((song, index) => {
+  //       song.serial = index + 1;
+  //     });
+  //     if (!nowPlaying) {
+  //       if (room.queue.length !== 0) {
+  //         io.to(roomid).emit("play-song", room.queue[0].path(PORT, roomid));
+  //         io.to(roomid).emit("set-queue", room?.queue);
+  //       }
+  //     }
+  //   }
+  // });
+
+  // socket.on("track-ended", (data) => {
+  //   const room = getRoom(data, rooms);
+  //   if (!room) return;
+  //   console.log("track-ended");
+
+  //   room.queue.shift();
+  //   room.queue.forEach((s, i) => (s.serial = i + 1));
+  //   room.nowPlaying = undefined;
+
+  //   io.to(data).emit("set-queue", room.queue);
+  //   tryPlayNext(room);
+  // });
 
   socket.on("disconnect", () => {
     let roomId = null;

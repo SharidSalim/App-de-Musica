@@ -1,7 +1,7 @@
-// const ytdlp = require("yt-dlp-exec");
-// const ffmpegPath = require("ffmpeg-static");
-// const fs = require("fs");
-// const path = require("path");
+const ytdlp = require("yt-dlp-exec");
+const ffmpegPath = require("ffmpeg-static");
+const fs = require("fs");
+const path = require("path");
 
 // const videoURL = "https://youtu.be/vb8wloc4Xpw?si=7Q9ARhoxmEPeUDS5";
 
@@ -29,7 +29,5 @@
 //   });
 
 
-const { v4: uuidv4 } = require("uuid"); // npm i uuid
 
-const videoURL = "https://youtu.be/vb8wloc4Xpw?si=7Q9ARhoxmEPeUDS5";
 

@@ -1,3 +1,4 @@
 /front-end/node_modules
 /back-end/node_modules
-/front-end/.en
+/front-end/.env
+/back-end/modules/abc.js

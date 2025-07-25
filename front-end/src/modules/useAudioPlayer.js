@@ -1,141 +1,104 @@
-// // hooks/useAudioPlayer.js
-// import { useEffect, useRef, useState, useCallback } from "react";
-
-// const useAudioPlayer = () => {
-//   const audioRef = useRef(null);
-//   const [isPlaying, setIsPlaying] = useState(false);
-//   const [currentSrc, setCurrentSrc] = useState(null);
-//   const [progress, setProgress] = useState(0);
-
-//   const play = useCallback((src) => {
-//     if (!src) return;
-//     if (audioRef.current) {
-//       audioRef.current.pause();
-//     }
-
-//     const audio = new Audio(src);
-//     audioRef.current = audio;
-
-//     audio.addEventListener("ended", () => setIsPlaying(false));
-//     audio.addEventListener("timeupdate", () => {
-//       setProgress(audio.currentTime / audio.duration);
-//     });
-
-//     audio.play()
-//       .then(() => {
-//         setIsPlaying(true);
-//         setCurrentSrc(src);
-//       })
-//       .catch(console.error);
-//   }, []);
-
-//   const pause = useCallback(() => {
-//     if (audioRef.current) {
-//       audioRef.current.pause();
-//       setIsPlaying(false);
-//     }
-//   }, []);
-
-//   const resume = useCallback(() => {
-//     if (audioRef.current) {
-//       audioRef.current.play();
-//       setIsPlaying(true);
-//     }
-//   }, []);
-
-//   const stop = useCallback(() => {
-//     if (audioRef.current) {
-//       audioRef.current.pause();
-//       audioRef.current.currentTime = 0;
-//       setIsPlaying(false);
-//     }
-//   }, []);
-
-//   const seek = useCallback((percent) => {
-//     if (audioRef.current && audioRef.current.duration) {
-//       audioRef.current.currentTime = percent * audioRef.current.duration;
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     return () => {
-//       if (audioRef.current) {
-//         audioRef.current.pause();
-//         audioRef.current = null;
-//       }
-//     };
-//   }, []);
-
-//   return {
-//     audio: {
-//       play,
-//       pause,
-//       resume,
-//       stop,
-//       seek,
-//       get isPlaying() {
-//         return isPlaying;
-//       },
-//       get progress() {
-//         return progress;
-//       },
-//       get currentSrc() {
-//         return currentSrc;
-//       },
-//     },
-//   };
-// };
-
-// export default useAudioPlayer;
-
-// hooks/useAudioPlayer.js
 import { useEffect, useRef, useState, useCallback } from "react";
 
 const useAudioPlayer = () => {
   const audioRef = useRef(null);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(null);
   const [progress, setProgress] = useState(0);
-  const onEndedRef = useRef(null); // to persist the callback
+  const syncIntervalRef = useRef(null);
+  const onEndedRef = useRef(null);
+  const startTimestampRef = useRef(0); // Use ref instead of state
 
-  const play = useCallback((src, onEnded) => {
+  const play = useCallback((src, offset = 0, onEnded) => {
     if (!src) return;
+
+    // Clear previous interval and event listeners
+    clearInterval(syncIntervalRef.current);
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current = null;
     }
 
     const audio = new Audio(src);
     audioRef.current = audio;
     onEndedRef.current = onEnded;
 
-    audio.addEventListener("ended", () => {
+    const handleEnded = () => {
       setIsPlaying(false);
-      if (onEndedRef.current) onEndedRef.current(); // Call the callback
-    });
+      clearInterval(syncIntervalRef.current);
+      onEndedRef.current?.();
+    };
 
-    audio.addEventListener("timeupdate", () => {
-      setProgress(audio.currentTime / audio.duration);
-    });
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+    };
 
-    audio.play()
-      .then(() => {
-        setIsPlaying(true);
-        setCurrentSrc(src);
-      })
-      .catch(console.error);
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+
+      if (offset > 0) {
+        audio.currentTime = offset;
+        startTimestampRef.current = Date.now() - offset * 1000;
+      }
+
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setCurrentSrc(src);
+
+          if (offset > 0) {
+            clearInterval(syncIntervalRef.current);
+            syncIntervalRef.current = setInterval(() => {
+              const expected = (Date.now() - startTimestampRef.current) / 1000;
+              const actual = audio.currentTime;
+              const drift = Math.abs(actual - expected);
+              console.log("ran interval", drift);
+
+              if (drift > 0.75) {
+                console.log("Correcting drift", drift.toFixed(2));
+                audio.currentTime = expected;
+              }
+            }, 5000);
+          }
+        })
+        .catch(console.error);
+    };
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    // Cleanup function for this audio instance
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
   }, []);
 
   const pause = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
+      clearInterval(syncIntervalRef.current);
     }
   }, []);
 
   const resume = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          // Update timestamp when resuming
+          startTimestampRef.current =
+            Date.now() - audioRef.current.currentTime * 1000;
+        })
+        .catch(console.error);
     }
   }, []);
 
@@ -144,17 +107,22 @@ const useAudioPlayer = () => {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
+      clearInterval(syncIntervalRef.current);
     }
   }, []);
 
   const seek = useCallback((percent) => {
     if (audioRef.current && audioRef.current.duration) {
       audioRef.current.currentTime = percent * audioRef.current.duration;
+      // Update timestamp after seeking
+      startTimestampRef.current =
+        Date.now() - audioRef.current.currentTime * 1000;
     }
   }, []);
 
   useEffect(() => {
     return () => {
+      clearInterval(syncIntervalRef.current);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -178,9 +146,14 @@ const useAudioPlayer = () => {
       get currentSrc() {
         return currentSrc;
       },
+      get currentTime() {
+        return currentTime;
+      },
+      get duration() {
+        return duration;
+      },
     },
   };
 };
 
 export default useAudioPlayer;
-
