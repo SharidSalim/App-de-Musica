@@ -50,7 +50,26 @@ function convertISO8601ToSeconds(isoDurationString) {
     return totalSeconds;
 }
 
+function calculateTimePassed(initialTime, finalTime) {
+  // Calculate the difference in milliseconds
+  const timeDifferenceMs = finalTime - initialTime;
 
+  // Ensure the final time is not before the initial time
+  if (timeDifferenceMs < 0) {
+    return "Final time cannot be before initial time.";
+  }
+
+  // Convert milliseconds to total minutes
+  const totalMinutes = Math.floor(timeDifferenceMs / (1000 * 60));
+
+  // Calculate hours
+  const hours = Math.floor(totalMinutes / 60);
+
+  // Calculate remaining minutes
+  const minutes = totalMinutes % 60;
+
+  return `${hours} hr ${minutes} min`;
+}
 
 async function getVideoDetails(videoUrl, apiKey) {
   const videoId = getVideoId(videoUrl);
@@ -91,4 +110,4 @@ const formatTime = (seconds) => {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 };
 
-export {getVideoDetails, getVideoId, formatTime}
+export {getVideoDetails, getVideoId, formatTime, calculateTimePassed}

@@ -43,6 +43,7 @@ app.use(
 function tryPlayNext(room) {
   if (!room || !room.queue.length) {
     console.log("tryPlayNext Didn't run!");
+    io.to(room.roomId).emit("stop-song")
     return;
   }
 

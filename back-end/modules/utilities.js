@@ -9,9 +9,10 @@ class roomData {
   queue = [];
   nowPlaying = undefined;
   loadedSongs = 0;
+  roomStartTime = Date.now()
   startTime = undefined;
   timeoutId = undefined;
-
+  roomState = 'public'
   constructor(roomId) {
     this.roomId = roomId;
   }

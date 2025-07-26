@@ -22,6 +22,7 @@ import MemberCard from "../components/MemberCard";
 import Chat from "../components/Chat";
 import { getVideoDetails, formatTime } from "../modules/utilities";
 import useAudioPlayer from "../modules/useAudioPlayer";
+import PlayingSong from "../components/PlayingSong";
 
 const Server = () => {
   const { roomId } = useParams();
@@ -70,11 +71,7 @@ const Server = () => {
       audio.play(path, offset); // start playback from offset
     });
 
-    // socketRef.current.on("play-song", (path) =>
-    //   audio.play(path, () => {
-    //     socketRef.current.emit("track-ended", roomId);
-    //   })
-    // );
+    socketRef.current.on("stop-song",()=> audio.stop())
 
     return () => {
       if (socketRef.current) {
@@ -220,7 +217,7 @@ const Server = () => {
             </div>
             <div className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]">
               {initMember.map((memberData) => (
-                <MemberCard rank={memberData.rank} name={memberData.name} />
+                <MemberCard rank={memberData.rank} name={memberData.name} you={JSON.parse(userData).id === memberData.id? true:false} />
               ))}
             </div>
           </div>
@@ -308,23 +305,7 @@ const Server = () => {
         id="PlayBar"
         className="h-[86px] p-2 flex shadow-lg justify-between items-center bg-[#ffffff15] rounded-xl mt-3"
       >
-        <div className="flex items-center">
-          <div
-            style={{
-              backgroundImage: `url("https://i.pinimg.com/736x/e5/88/97/e5889767806916d6047a45a01a81a2e0.jpg")`,
-            }}
-            className="w-[67px] background  h-[67px] rounded-lg"
-          ></div>
-          <p className="leading-4 ml-2">
-            <span className="font-semibold font-poppins text-white text-[14px]">
-              Levitating (Feat da baby)
-            </span>
-            <br />
-            <span className="text-[12px] font-poppins font-semibold text-gray-200">
-              {"Dua Lipa, DaBaby"}
-            </span>
-          </p>
-        </div>
+        <PlayingSong name={queueInit[0]?.title} url={queueInit[0]?.thumbnail} channel={queueInit[0]?.channel}/>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-x-5 my-1.5">
             <IoPlaySkipBack

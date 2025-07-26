@@ -62,7 +62,7 @@ const useAudioPlayer = () => {
                 console.log("Correcting drift", drift.toFixed(2));
                 audio.currentTime = expected;
               }
-            }, 5000);
+            }, 3000);
           }
         })
         .catch(console.error);

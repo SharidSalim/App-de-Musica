@@ -1,6 +1,6 @@
 import React from 'react'
 
-const MemberCard = ({name, rank}) => {
+const MemberCard = ({name, rank, you=false}) => {
   return (
    <div  className="w-full my-2 shadow-md h-[56px] border-3 bg-[#ffffff20] border-transparent rounded-md flex justify-between items-center hover:backdrop-blur-xs  hover:border-gray-200 transition-all duration-300 animate-appear">
       <div className="flex items-center">
@@ -13,6 +13,7 @@ const MemberCard = ({name, rank}) => {
           <span className="font-semibold text-[14px] font-raleway text-white">
             {name}
           </span>
+          <span className='text-white text-[14px] font-raleway ml-1.5'>{you?"(you)":""}</span>
           <br />
           <span className="text-[10px] font-raleway font-semibold text-gray-100">
             {rank}
