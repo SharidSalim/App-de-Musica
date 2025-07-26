@@ -12,7 +12,7 @@ class roomData {
   roomStartTime = Date.now()
   startTime = undefined;
   timeoutId = undefined;
-  roomState = 'public'
+  roomState = 'private'
   constructor(roomId) {
     this.roomId = roomId;
   }

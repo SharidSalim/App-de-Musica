@@ -16,13 +16,16 @@ import {
 } from "react-icons/io5";
 import { ImExit } from "react-icons/im";
 import { useNavigate, useLocation, useParams } from "react-router";
-import { GrHelpBook } from "react-icons/gr";
+
 import { io } from "socket.io-client";
 import MemberCard from "../components/MemberCard";
 import Chat from "../components/Chat";
 import { getVideoDetails, formatTime } from "../modules/utilities";
 import useAudioPlayer from "../modules/useAudioPlayer";
 import PlayingSong from "../components/PlayingSong";
+import PlaceholderDiv from "../components/PlaceholderDiv";
+import { toast, ToastContainer, Slide } from "react-toastify";
+import GearDropdown from "../components/GearDropDown";
 
 const Server = () => {
   const { roomId } = useParams();
@@ -37,11 +40,13 @@ const Server = () => {
   const [msg, setMsg] = useState("");
   const [userData, setUserData] = useState("");
   const [songURL, setSongURL] = useState("");
+  const [serverStatus, setServerStatus] = useState("")
 
   const location = useLocation();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const name = location.state?.userName || undefined;
+
 
   useEffect(() => {
     if ("") {
@@ -59,6 +64,7 @@ const Server = () => {
       setUserData(sessionStorage.getItem("userData"));
     });
 
+    socketRef.current.on("get-server-status",(status)=> setServerStatus(status))
     socketRef.current.on("set-chat", (chat) => setChatsInit(chat));
     socketRef.current.on("set-queue", (e) => setQueueInit(e));
 
@@ -71,7 +77,7 @@ const Server = () => {
       audio.play(path, offset); // start playback from offset
     });
 
-    socketRef.current.on("stop-song",()=> audio.stop())
+    socketRef.current.on("stop-song", () => audio.stop());
 
     return () => {
       if (socketRef.current) {
@@ -97,11 +103,14 @@ const Server = () => {
             <h1 className="text-[21px] font-poppins text-white font-semibold ml-[14px]">
               Queue
             </h1>
-            <p className="mr-[14px] text-sm font-poppins text-white">16</p>
+            <p className="mr-[14px] text-sm font-poppins text-white">
+              {queueInit.length}
+            </p>
           </div>
-          <div
+          <PlaceholderDiv
             id="container"
             className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]"
+            msg="Add a track"
           >
             {queueInit.map((data) => (
               <QueueCard
@@ -111,7 +120,7 @@ const Server = () => {
                 QueueNum={data.serial}
               />
             ))}
-          </div>
+          </PlaceholderDiv>
         </div>
 
         <div
@@ -157,10 +166,10 @@ const Server = () => {
                         duration,
                       });
                     } catch (err) {
-                      alert("Something went wrong");
+                      toast("Something went wrong");
                     }
                   } else {
-                    alert("Enter Song URL");
+                    toast("Enter Song URL");
                   }
                   setSongURL("");
                 }
@@ -217,7 +226,11 @@ const Server = () => {
             </div>
             <div className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]">
               {initMember.map((memberData) => (
-                <MemberCard rank={memberData.rank} name={memberData.name} you={JSON.parse(userData).id === memberData.id? true:false} />
+                <MemberCard
+                  rank={memberData.rank}
+                  name={memberData.name}
+                  you={JSON.parse(userData).id === memberData.id ? true : false}
+                />
               ))}
             </div>
           </div>
@@ -305,7 +318,11 @@ const Server = () => {
         id="PlayBar"
         className="h-[86px] p-2 flex shadow-lg justify-between items-center bg-[#ffffff15] rounded-xl mt-3"
       >
-        <PlayingSong name={queueInit[0]?.title} url={queueInit[0]?.thumbnail} channel={queueInit[0]?.channel}/>
+        <PlayingSong
+          name={queueInit[0]?.title}
+          url={queueInit[0]?.thumbnail}
+          channel={queueInit[0]?.channel}
+        />
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-x-5 my-1.5">
             <IoPlaySkipBack
@@ -359,7 +376,7 @@ const Server = () => {
               {formatTime(audio.currentTime)}
             </p>
             <input
-              className="w-[475px] h-1 mx-3"
+              className="w-[475px] my-6 h-1 mx-3"
               value={audio.progress * 100}
               type="range"
               name=""
@@ -382,10 +399,10 @@ const Server = () => {
             className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
             size={22}
           />
-          <GrHelpBook
-            size={22}
-            className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
-          />
+         
+          <GearDropdown status={serverStatus} setServerStatus={()=>{
+            socketRef.current.emit("change-server-status", roomId)
+          }} />
           {!chatSection ? (
             <IoChatbubbleSharp
               onClick={() => setChatSection(!chatSection)}
@@ -415,6 +432,20 @@ const Server = () => {
           </div>
         </div>
       </div>
+      <ToastContainer
+        position="top-center"
+        autoClose={1568}
+        limit={3}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        transition={Slide}
+      />
     </div>
   );
 };
