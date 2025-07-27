@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import QueueCard from "../components/QueueCard";
 import FuncButton from "../components/FuncButton";
 import {
+  FaArrowDown,
   FaPause,
   FaPlay,
   FaSearch,
@@ -26,6 +27,7 @@ import PlayingSong from "../components/PlayingSong";
 import PlaceholderDiv from "../components/PlaceholderDiv";
 import { toast, ToastContainer, Slide } from "react-toastify";
 import GearDropdown from "../components/GearDropDown";
+import { FaVolumeHigh, FaVolumeXmark } from "react-icons/fa6";
 
 const Server = () => {
   const { roomId } = useParams();
@@ -40,13 +42,28 @@ const Server = () => {
   const [msg, setMsg] = useState("");
   const [userData, setUserData] = useState("");
   const [songURL, setSongURL] = useState("");
-  const [serverStatus, setServerStatus] = useState("")
+  const [serverStatus, setServerStatus] = useState("");
+  const [volume, setVolume] = useState(50);
+  const [chatNotify, setChatNotify] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showJumpButton, setShowJumpButton] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const socketRef = useRef(null);
+  const messageEndRef = useRef(null);
+  const messageContainerRef = useRef(null);
+
   const name = location.state?.userName || undefined;
 
+  const handleScroll = () => {
+    const el = messageContainerRef.current;
+    const threshold = 50;
+    const isUserAtBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    setIsAtBottom(isUserAtBottom);
+    if (isUserAtBottom) setShowJumpButton(false);
+  };
 
   useEffect(() => {
     if ("") {
@@ -64,8 +81,17 @@ const Server = () => {
       setUserData(sessionStorage.getItem("userData"));
     });
 
-    socketRef.current.on("get-server-status",(status)=> setServerStatus(status))
-    socketRef.current.on("set-chat", (chat) => setChatsInit(chat));
+    socketRef.current.on("get-server-status", (status) =>
+      setServerStatus(status)
+    );
+    socketRef.current.on("set-chat", (chat) => {
+      if (chat.length > 0) {
+        setChatsInit(chat);
+        setChatNotify(true);
+      } else {
+        setChatsInit(chat);
+      }
+    });
     socketRef.current.on("set-queue", (e) => setQueueInit(e));
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
@@ -88,6 +114,14 @@ const Server = () => {
       audio.stop();
     };
   }, [socketRef, roomId]);
+
+  useEffect(() => {
+    if (isAtBottom) {
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      setShowJumpButton(true); // new chat came, but user is not at bottom
+    }
+  }, [chatsInit]);
 
   return (
     <div className="p-2.5 h-screen overflow-hidden w-full bg-[url(./assets/home_bg.jpg)] background">
@@ -242,21 +276,41 @@ const Server = () => {
             <h1 className="text-[21px] h-[31.5px] font-poppins text-white font-semibold ml-[14px]">
               Chats
             </h1>
-            <div className="flex flex-col justify-end h-[calc(100%-31.5px-35px)]">
-              <div className="flex flex-col pb-1 overflow-y-auto scrollbar gap-y-3">
-                {chatsInit.map((msg) =>
+            <div className="flex relative flex-col justify-end h-[calc(100%-31.5px-35px)]">
+              <div
+                ref={messageContainerRef}
+                onScroll={handleScroll}
+                className="flex flex-col pb-1 overflow-y-auto scrollbar gap-y-3"
+              >
+                {chatsInit.map((msg, i) =>
                   msg.senderId ===
                   JSON.parse(sessionStorage.getItem("userData")).id ? (
                     <Chat
                       msg={msg.msg}
                       name={msg.sender}
                       currentClient={true}
+                      key={i}
                     />
                   ) : (
-                    <Chat msg={msg.msg} name={msg.sender} />
+                    <Chat msg={msg.msg} name={msg.sender} key={i} />
                   )
                 )}
+                <div ref={messageEndRef} />
               </div>
+              {showJumpButton && (
+                <FuncButton
+                  onClick={() => {
+                    messageEndRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                    });
+                    setShowJumpButton(false);
+                  }}
+                  className="absolute group animate-appear z-10 left-[50%] translate-x-[-50%] bottom-[8px] bg-[#ffffff60]"
+                  diameter={"35px"}
+                >
+                  <FaArrowDown size={14} className="text-gray-400 group-hover:text-gray-800" />
+                </FuncButton>
+              )}
             </div>
             <div
               id="ChatBar"
@@ -376,7 +430,7 @@ const Server = () => {
               {formatTime(audio.currentTime)}
             </p>
             <input
-              className="w-[475px] my-6 h-1 mx-3"
+              className="w-[475px] h-1 mx-3"
               value={audio.progress * 100}
               type="range"
               name=""
@@ -399,33 +453,74 @@ const Server = () => {
             className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
             size={22}
           />
-         
-          <GearDropdown status={serverStatus} setServerStatus={()=>{
-            socketRef.current.emit("change-server-status", roomId)
-          }} />
+
+          <GearDropdown
+            status={serverStatus}
+            setServerStatus={() => {
+              socketRef.current.emit("change-server-status", roomId);
+            }}
+          />
           {!chatSection ? (
-            <IoChatbubbleSharp
-              onClick={() => setChatSection(!chatSection)}
-              size={22}
-              className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
-            />
+            <div
+              className="relative cursor-pointer"
+              onClick={() => {
+                setChatSection(!chatSection);
+                setChatNotify(false);
+              }}
+            >
+              {chatNotify && (
+                <span className="absolute top-0 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-400"></span>
+                </span>
+              )}
+
+              <IoChatbubbleSharp
+                size={22}
+                className="text-gray-100 hover:text-white transition duration-300"
+              />
+            </div>
           ) : (
             <FaUserFriends
-              onClick={() => setChatSection(!chatSection)}
+              onClick={() => {
+                setChatSection(!chatSection);
+                setChatNotify(false);
+              }}
               size={22}
               className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
             />
           )}
           <div className="flex items-center">
-            <FaVolumeUp
-              className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
-              size={22}
-            />
+            {volume > 0 ? (
+              <FaVolumeHigh
+                className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+                size={22}
+                onClick={() => {
+                  setVolume(0);
+                  audio.setVolume(0);
+                }}
+              />
+            ) : (
+              <FaVolumeXmark
+                className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+                size={22}
+                onClick={() => {
+                  setVolume(50);
+                  audio.setVolume(0.5);
+                }}
+              />
+            )}
             <input
               className="w-[120px] h-1 mx-1"
               type="range"
               min={0}
               max={100}
+              onChange={(e) => {
+                const vol = parseInt(e.target.value);
+                setVolume(vol);
+                audio.setVolume(vol / 100);
+              }}
+              value={volume}
               name=""
               id=""
             />

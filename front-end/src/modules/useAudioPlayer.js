@@ -9,7 +9,8 @@ const useAudioPlayer = () => {
   const [progress, setProgress] = useState(0);
   const syncIntervalRef = useRef(null);
   const onEndedRef = useRef(null);
-  const startTimestampRef = useRef(0); // Use ref instead of state
+  const startTimestampRef = useRef(0);
+  const volumeRef = useRef(1); // Use ref instead of state
 
   const play = useCallback((src, offset = 0, onEnded) => {
     if (!src) return;
@@ -22,6 +23,7 @@ const useAudioPlayer = () => {
     }
 
     const audio = new Audio(src);
+     audio.volume = volumeRef.current; 
     audioRef.current = audio;
     onEndedRef.current = onEnded;
 
@@ -120,6 +122,13 @@ const useAudioPlayer = () => {
     }
   }, []);
 
+   const setVolume = useCallback((value) => {
+    volumeRef.current = value;
+    if (audioRef.current) {
+      audioRef.current.volume = value;
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       clearInterval(syncIntervalRef.current);
@@ -137,6 +146,7 @@ const useAudioPlayer = () => {
       resume,
       stop,
       seek,
+      setVolume,
       get isPlaying() {
         return isPlaying;
       },

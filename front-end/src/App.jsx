@@ -8,6 +8,7 @@ import { TbReload } from "react-icons/tb";
 import { ToastContainer, toast, Slide } from "react-toastify";
 import PublicRooms from "./components/PublicRooms";
 import { calculateTimePassed } from "./modules/utilities";
+import PlaceholderDiv from "./components/PlaceholderDiv"
 
 const App = () => {
   const navigate = useNavigate();
@@ -278,7 +279,7 @@ const App = () => {
                         }}
                       />
                     </div>
-                    <div className="w-full px-2.5 h-[402px] overflow-y-auto scrollbar">
+                    <PlaceholderDiv msg={"There are no public servers"} className="w-full px-2.5 h-[385px] overflow-y-auto scrollbar">
                       {publicRooms &&
                         publicRooms.map((room) => (
                           <PublicRooms
@@ -290,7 +291,7 @@ const App = () => {
                             )}
                           />
                         ))}
-                    </div>
+                    </PlaceholderDiv>
                   </div>
                 );
               }

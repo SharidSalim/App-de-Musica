@@ -1,9 +1,10 @@
 import React from "react";
-const Chat = ({ name = "", msg, currentClient = false }) => {
+const Chat = ({ name = "", msg, currentClient = false, key }) => {
   const displayName =
     typeof name === "string" && name.length > 0 ? name[0].toUpperCase() : "?";
   return (
     <div
+    key={key}
       className={`flex ${
         currentClient ? "flex-row-reverse" : ""
       } animate-appear items-end gap-x-1`}

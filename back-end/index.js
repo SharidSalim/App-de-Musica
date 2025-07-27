@@ -85,9 +85,12 @@ app.post("/create-room", (req, res) => {
   }
   res.send(room);
 });
+
 app.get("/rooms", (req, res) => {
-  res.send(rooms);
+  const cleanedRooms = rooms.map(({ timeoutId, ...room }) => room);
+  res.send(cleanedRooms);
 });
+
 
 app.get("/rooms/:id", (req, res) => {
   const roomInfo = rooms.find((obj) => obj.roomId === req.params.id);
