@@ -15,6 +15,7 @@ const {
   rankPriority,
   downloadSong,
 } = require("./modules/utilities");
+const { log } = require("console");
 
 const app = express();
 const server = http.createServer(app);
@@ -49,18 +50,34 @@ function tryPlayNext(room) {
 
   const next = room.queue[0];
 
-  console.log("Now Playing: ", room.nowPlaying);
+    // Download next songs (up to 2 ahead)
+  for (let i = 1; i <= 2; i++) {
+    if (room.queue[i]) {
+      if(!room.queue[i].isDownloaded)
+      consistentDownload(room.queue[i], room);
+    }
+  }
 
   if (next.isDownloaded && room.nowPlaying === undefined) {
     room.nowPlaying = next;
+      room.playedHistory.push(room.nowPlaying);
     room.startTime = Date.now();
     io.to(room.roomId).emit("play-song", {
       path: next.path(PORT, room.roomId),
       startTime: room.startTime,
     });
-    console.log("Ran play-song");
+
+    console.log("Now Playing: ", room.nowPlaying);
 
     room.timeoutId = setTimeout(() => {
+       const audioFolderPath = path.join(__dirname, "audio", room.roomId);
+      const filePath = path.join(audioFolderPath, `${next.videoId}.mp3`);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`🧹 Deleted played song: ${next.videoId}.mp3`);
+      }
+      room.loadedSongs -= 1;
       room.queue.shift();
       room.queue.forEach((s, i) => (s.serial = i + 1));
       room.nowPlaying = undefined;
@@ -68,6 +85,69 @@ function tryPlayNext(room) {
       tryPlayNext(room); // Play next track
     }, next.duration * 1000);
   }
+}
+
+// function consistentDownload(song, room) {
+//   console.log("Loaded Songs", room.loadedSongs);
+
+//   if (room.loadedSongs >= 4 || song.isDownloaded || song.isDownloading) {
+//     console.log("didn't download a song");
+//     return;
+//   }
+//   if (room.loadedSongs < 4) {
+//     song.isDownloading = true;
+//     room.loadedSongs += 1;
+//     console.log("updated loaded songs", room.loadedSongs);
+
+//     downloadSong(
+//       song.url,
+//       __dirname,
+//       room.roomId,
+//       song.videoId,
+//       () => {
+//         song.isDownloaded = true;
+//         song.isDownloading = false;
+//         tryPlayNext(room);
+//       },
+//       () => {
+//         room.loadedSongs -= 1;
+//       }
+//     );
+//   }
+// }
+
+function consistentDownload(song, room) {
+  // If already downloaded or downloading, skip
+  if (song.isDownloaded || song.isDownloading) {
+    return;
+  }
+  
+  // Limit concurrent downloads to 3
+  const activeDownloads = room.queue.filter(
+    s => s.isDownloading
+  ).length;
+  
+  if (activeDownloads >= 3) {
+    return;
+  }
+
+  song.isDownloading = true;
+  console.log("Starting download for:", song.videoId);
+
+  downloadSong(
+    song.url,
+    __dirname,
+    room.roomId,
+    song.videoId,
+    () => {
+      song.isDownloaded = true;
+      song.isDownloading = false;
+      tryPlayNext(room);
+    },
+    () => {
+      song.isDownloading = false;
+    }
+  );
 }
 
 const rooms = [];
@@ -91,7 +171,6 @@ app.get("/rooms", (req, res) => {
   res.send(cleanedRooms);
 });
 
-
 app.get("/rooms/:id", (req, res) => {
   const roomInfo = rooms.find((obj) => obj.roomId === req.params.id);
   const { timeoutId, ...safeRoomInfo } = roomInfo;
@@ -100,6 +179,7 @@ app.get("/rooms/:id", (req, res) => {
 
 // Socket.io connection
 io.on("connection", (socket) => {
+  //Join room
   socket.on("join-room", (data) => {
     socket.join(data.roomId);
 
@@ -119,7 +199,7 @@ io.on("connection", (socket) => {
 
       socket.emit("set-chat", rooms[indexRoom]?.chats);
       socket.emit("set-queue", rooms[indexRoom]?.queue);
-      socket.emit("get-server-status", rooms[indexRoom]?.roomState)
+      socket.emit("get-server-status", rooms[indexRoom]?.roomState);
 
       const currentSong = rooms[indexRoom]?.nowPlaying;
       if (currentSong) {
@@ -138,6 +218,7 @@ io.on("connection", (socket) => {
     console.log(`User ${data.name}:${socket.id} joined room ${data.roomId}`);
   });
 
+  //Send texts
   socket.on("send-msg", (data) => {
     const msg = new chatData(data.name, socket.id, data.msg);
     const room = getRoom(data.roomId, rooms);
@@ -149,6 +230,7 @@ io.on("connection", (socket) => {
     io.to(data.roomId).emit("set-chat", room.chats);
   });
 
+  //skip Song
   socket.on("skip-song", (data) => {
     const room = getRoom(data, rooms);
     if (!room) return;
@@ -166,15 +248,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  //Server public/private state
+  socket.on("change-server-status", (roomId) => {
+    let room = getRoom(roomId, rooms);
+    if (room?.roomState === "public") {
+      room.roomState = "private";
+    } else if (room?.roomState === "private") room.roomState = "public";
+    io.to(roomId).emit("get-server-status", room.roomState);
+  });
 
-  socket.on("change-server-status",(roomId)=>{
-    let room = getRoom(roomId,rooms)
-    if(room?.roomState==="public"){
-      room.roomState = "private"
-    } else if (room?.roomState==="private") room.roomState = "public"
-    io.to(roomId).emit("get-server-status",room.roomState)
-  })
-
+  //add a new song
   socket.on("add-song", (data) => {
     const room = getRoom(data.roomId, rooms);
     if (!room) return;
@@ -193,28 +276,76 @@ io.on("connection", (socket) => {
 
     room.queue.push(song);
 
-    // Start downloading immediately
-    downloadSong(
-      song.url,
-      __dirname,
-      data.roomId,
-      song.videoId,
-      () => {
-        song.isDownloaded = true;
-        room.loadedSongs += 1;
-        io.to(data.roomId).emit("set-queue", room.queue);
-        tryPlayNext(room);
-      },
-      () => {
-        io.to(data.roomId).emit("set-queue", room.queue);
-      }
-    );
-
-    console.log(room.nowPlaying);
+    // downloadSong(
+    //   song.url,
+    //   __dirname,
+    //   data.roomId,
+    //   song.videoId,
+    //   () => {
+    //     song.isDownloaded = true;
+    //     io.to(data.roomId).emit("set-queue", room.queue);
+    //     tryPlayNext(room);
+    //   },
+    //   () => {
+    //     io.to(data.roomId).emit("set-queue", room.queue);
+    //   }
+    // );
+    if (room.queue.length <= 3) {
+    consistentDownload(song, room);
+  }
 
     io.to(data.roomId).emit("set-queue", room.queue);
   });
 
+  //   socket.on("play-prev", (roomId) => {
+  //   const room = getRoom(roomId, rooms);
+  //   if (!room) return;
+
+  //   // ✅ Pop the last played song
+  //   const previous = room.playedHistory.pop();
+  //   if (!previous) return; // No history available
+
+  //   // ✅ Re-insert current song back to front of queue
+  //   if (room.nowPlaying) {z
+  //     room.queue.unshift(room.nowPlaying);
+  //   }
+
+  //   // ✅ Set previous song as now playing
+  //   room.nowPlaying = previous;
+  //   room.startTime = Date.now();
+
+  //   io.to(roomId).emit("set-queue", room.queue);
+
+  //   // ✅ Reset timer
+  //   if (room.timeoutId) clearTimeout(room.timeoutId);
+  //   room.timeoutId = setTimeout(() => {
+  //     tryPlayNext(room);
+  //   }, previous.duration * 1000);
+  // });
+
+  //play previous track
+  socket.on("play-prev", (roomId) => {
+    const room = getRoom(roomId, rooms);
+    if (!room) return;
+
+    if (room.playPrev()) {
+      io.to(roomId).emit("play-song", {
+        path: room.nowPlaying.path(PORT, room.roomId),
+        startTime: room.startTime,
+      });
+
+      // Set timeout for the previous song
+      room.timeoutId = setTimeout(() => {
+        room.playedHistory.push(room.nowPlaying);
+        room.nowPlaying = undefined;
+        tryPlayNext(room);
+      }, room.nowPlaying.duration * 1000);
+
+      io.to(roomId).emit("set-queue", room.queue);
+    }
+  });
+
+  //disconnect from server
   socket.on("disconnect", () => {
     let roomId = null;
     for (const room of rooms) {

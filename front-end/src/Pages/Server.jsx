@@ -382,6 +382,7 @@ const Server = () => {
             <IoPlaySkipBack
               size={28}
               className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+              onClick={()=>socketRef.current.emit("play-prev",roomId)}
             />
             {!pauseState ? (
               <FuncButton

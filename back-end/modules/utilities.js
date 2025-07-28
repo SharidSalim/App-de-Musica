@@ -8,13 +8,36 @@ class roomData {
   members = [];
   queue = [];
   nowPlaying = undefined;
+  playedHistory = [];
   loadedSongs = 0;
-  roomStartTime = Date.now()
+  roomStartTime = Date.now();
   startTime = undefined;
   timeoutId = undefined;
-  roomState = 'private'
+  roomState = "private";
   constructor(roomId) {
     this.roomId = roomId;
+  }
+  playPrev() {
+    if (this.playedHistory.length === 0) return false;
+
+    // Clear current timeout if playing
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+
+    // Re-insert current song to queue if exists
+    const prevSong = this.playedHistory[this.playedHistory.length - 1];
+    if (this.nowPlaying) {
+      this.queue.unshift(prevSong);
+    }
+
+    // Get previous song from history
+
+    this.nowPlaying = prevSong;
+    this.startTime = Date.now();
+
+    // Update queue serial numbers
+    this.queue.forEach((s, i) => (s.serial = i + 1));
+
+    return true;
   }
 }
 
@@ -22,6 +45,7 @@ class songData {
   serial = 0;
 
   isDownloaded = false;
+  isDownloading = false;
 
   constructor(url, addedBy, title, channel, thumbnail, videoId, duration) {
     this.url = url;
@@ -89,19 +113,38 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
   // Construct full output path
   const outputPath = path.join(outputFolder, `${videoId}.%(ext)s`);
 
+  if (fs.existsSync(outputPath)) {
+    console.log("✅ File already exists!");
+    then();
+    return;
+  }
+
   ytdlp(url, {
     output: outputPath,
     extractAudio: true,
     audioFormat: "mp3",
     audioQuality: "0",
+    maxFilesize: "15M",
     ffmpegLocation: ffmpegPath,
   })
     .then((output) => {
+      const stats = fs.statSync(path.join(outputFolder,`${videoId}.mp3`));
+      const fileSizeMB = stats.size / (1024 * 1024);
+
+      if (fileSizeMB > 15) {
+        console.warn("❌ File too big, deleting:", videoId);
+        fs.unlinkSync(outputPath);
+        throw new Error("File size exceeds 15MB");
+      }
+
       console.log("✅ Download complete!");
-      console.log(`Saved as: ${videoId}.mp3`);
+      console.log(`Saved as: ${videoId}.mp3 (${fileSizeMB.toFixed(2)}MB)`);
       then();
     })
     .catch((err) => {
+      if (fs.existsSync(outputPath)) {
+        fs.unlinkSync(outputPath);
+      }
       Catch();
       console.error("❌ Download failed:", err);
     });
