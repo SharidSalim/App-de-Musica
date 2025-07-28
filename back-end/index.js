@@ -15,7 +15,6 @@ const {
   rankPriority,
   downloadSong,
 } = require("./modules/utilities");
-const { log } = require("console");
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +40,16 @@ app.use(
   })
 );
 
+function deleteSongFile(room, songId) {
+  const audioFolderPath = path.join(__dirname, "audio", room.roomId);
+  const filePath = path.join(audioFolderPath, `${songId}.mp3`);
+
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    console.log(`🧹 Deleted played song: ${songId}.mp3`);
+  }
+}
+
 function tryPlayNext(room) {
   if (!room || !room.queue.length) {
     console.log("tryPlayNext Didn't run!");
@@ -50,17 +59,16 @@ function tryPlayNext(room) {
 
   const next = room.queue[0];
 
-    // Download next songs (up to 2 ahead)
+  // Download next songs (up to 2 ahead)
   for (let i = 1; i <= 2; i++) {
     if (room.queue[i]) {
-      if(!room.queue[i].isDownloaded)
-      consistentDownload(room.queue[i], room);
+      if (!room.queue[i].isDownloaded) consistentDownload(room.queue[i], room);
     }
   }
 
   if (next.isDownloaded && room.nowPlaying === undefined) {
     room.nowPlaying = next;
-      room.playedHistory.push(room.nowPlaying);
+    room.playedHistory.push(room.nowPlaying);
     room.startTime = Date.now();
     io.to(room.roomId).emit("play-song", {
       path: next.path(PORT, room.roomId),
@@ -70,13 +78,7 @@ function tryPlayNext(room) {
     console.log("Now Playing: ", room.nowPlaying);
 
     room.timeoutId = setTimeout(() => {
-       const audioFolderPath = path.join(__dirname, "audio", room.roomId);
-      const filePath = path.join(audioFolderPath, `${next.videoId}.mp3`);
-      
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`🧹 Deleted played song: ${next.videoId}.mp3`);
-      }
+      deleteSongFile(room, next.videoId);
       room.loadedSongs -= 1;
       room.queue.shift();
       room.queue.forEach((s, i) => (s.serial = i + 1));
@@ -87,46 +89,45 @@ function tryPlayNext(room) {
   }
 }
 
-// function consistentDownload(song, room) {
-//   console.log("Loaded Songs", room.loadedSongs);
+// Add this function to handle pause/resume logic
+function togglePlayState(room, shouldPause, clientTime) {
+  if (!room || !room.nowPlaying) return;
 
-//   if (room.loadedSongs >= 4 || song.isDownloaded || song.isDownloading) {
-//     console.log("didn't download a song");
-//     return;
-//   }
-//   if (room.loadedSongs < 4) {
-//     song.isDownloading = true;
-//     room.loadedSongs += 1;
-//     console.log("updated loaded songs", room.loadedSongs);
+  currentSongId = room.nowPlaying.videoId;
+  room.paused = shouldPause;
 
-//     downloadSong(
-//       song.url,
-//       __dirname,
-//       room.roomId,
-//       song.videoId,
-//       () => {
-//         song.isDownloaded = true;
-//         song.isDownloading = false;
-//         tryPlayNext(room);
-//       },
-//       () => {
-//         room.loadedSongs -= 1;
-//       }
-//     );
-//   }
-// }
+  if (shouldPause) {
+    // Pause logic
+    if (room.timeoutId) {
+      clearTimeout(room.timeoutId);
+      room.timeoutId = null;
+    }
+
+    room.elapsedBeforePause = clientTime || Date.now() - room.startTime;
+  } else {
+    // Resume logic
+    room.startTime = Date.now() - room.elapsedBeforePause;
+    room.timeoutId = setTimeout(() => {
+      deleteSongFile(room, currentSongId);
+      room.loadedSongs -= 1;
+      room.queue.shift();
+      room.queue.forEach((s, i) => (s.serial = i + 1));
+      room.nowPlaying = undefined;
+      io.to(room.roomId).emit("set-queue", room.queue);
+      tryPlayNext(room);
+    }, room.nowPlaying.duration * 1000 - room.elapsedBeforePause);
+  }
+}
 
 function consistentDownload(song, room) {
   // If already downloaded or downloading, skip
   if (song.isDownloaded || song.isDownloading) {
     return;
   }
-  
+
   // Limit concurrent downloads to 3
-  const activeDownloads = room.queue.filter(
-    s => s.isDownloading
-  ).length;
-  
+  const activeDownloads = room.queue.filter((s) => s.isDownloading).length;
+
   if (activeDownloads >= 3) {
     return;
   }
@@ -134,7 +135,7 @@ function consistentDownload(song, room) {
   song.isDownloading = true;
   console.log("Starting download for:", song.videoId);
 
-  downloadSong(
+  song.downloadProcess = downloadSong(
     song.url,
     __dirname,
     room.roomId,
@@ -179,16 +180,24 @@ app.get("/rooms/:id", (req, res) => {
 
 // Socket.io connection
 io.on("connection", (socket) => {
+  function sendErrorMsg(msg, room, allClient = false) {
+    if (allClient) {
+      io.to(room.roomId).emit("server-err", msg);
+    } else socket.emit("server-err", msg);
+  }
+
   //Join room
   socket.on("join-room", (data) => {
     socket.join(data.roomId);
-
+    const room = getRoom(data.roomId, rooms);
+    if (!room) return;
     let indexRoom = rooms.findIndex((obj) => obj.roomId === data.roomId);
-    let rank = rooms[indexRoom]?.members.length === 0 ? "host" : "guest";
+
+    let rank = room.members.length === 0 ? "host" : "guest";
 
     if (indexRoom !== -1) {
       const newMember = new memberData(data.name, socket.id, rank);
-      rooms[indexRoom].members.push(newMember);
+      room.members.push(newMember);
       socket.socketSession = newMember;
 
       socket.emit("userData-retrieve", {
@@ -197,19 +206,30 @@ io.on("connection", (socket) => {
         id: socket.id,
       });
 
-      socket.emit("set-chat", rooms[indexRoom]?.chats);
-      socket.emit("set-queue", rooms[indexRoom]?.queue);
-      socket.emit("get-server-status", rooms[indexRoom]?.roomState);
+      socket.emit("set-chat", rooms.chats);
+      socket.emit("set-queue", room.queue);
+      socket.emit("get-server-status", room.roomState);
 
-      const currentSong = rooms[indexRoom]?.nowPlaying;
+      const currentSong = room.nowPlaying;
       if (currentSong) {
-        socket.emit("play-song", {
-          path: currentSong.path(PORT, rooms[indexRoom].roomId),
-          startTime: rooms[indexRoom].startTime,
-        });
+        if (room.paused) {
+          // Send paused state with elapsed time
+          socket.emit("play-song", {
+            path: currentSong.path(PORT, room.roomId),
+            startTime: room.startTime,
+            paused: true,
+            elapsed: room.elapsedBeforePause,
+          });
+        } else {
+          // Send normal play command
+          socket.emit("play-song", {
+            path: currentSong.path(PORT, room.roomId),
+            startTime: room.startTime,
+          });
+        }
       }
 
-      const members = rooms[indexRoom]?.members;
+      const members = room.members;
       members.sort((a, b) => {
         return rankPriority[a.rank] - rankPriority[b.rank];
       });
@@ -233,15 +253,23 @@ io.on("connection", (socket) => {
   //skip Song
   socket.on("skip-song", (data) => {
     const room = getRoom(data, rooms);
-    if (!room) return;
+    if (!room || room.nowPlaying === undefined) {
+      sendErrorMsg("Nothing is being played right now!", room);
+      return;
+    }
 
+    if (room.queue[1] && room.queue[1].isDownloading) {
+      sendErrorMsg("Next song hasn't loaded yet!", room);
+      return;
+    }
+    deleteSongFile(room, room.nowPlaying.videoId);
+    room.nowPlaying = undefined;
+    room.loadedSongs -= 1;
     room.queue.shift();
     if (room.queue.length === 0) {
-      room.nowPlaying = undefined;
       io.to(data).emit("set-queue", room.queue);
     } else {
       room.queue.forEach((s, i) => (s.serial = i + 1));
-      room.nowPlaying = undefined;
 
       io.to(data).emit("set-queue", room.queue);
       tryPlayNext(room);
@@ -257,11 +285,27 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("get-server-status", room.roomState);
   });
 
+  //toggle Pause state
+  socket.on("toggle-play-state", (data) => {
+    const room = getRoom(data.roomId, rooms);
+    if (!room) return;
+
+    togglePlayState(room, data.shouldPause, data.currentTime);
+    io.to(data.roomId).emit("play-state-changed", {
+      shouldPause: data.shouldPause,
+      elapsed: room.elapsedBeforePause,
+    });
+  });
+
   //add a new song
   socket.on("add-song", (data) => {
     const room = getRoom(data.roomId, rooms);
     if (!room) return;
 
+    if (room.queue.some((song) => data.videoId === song.videoId)) {
+      sendErrorMsg("Track has been already added!");
+      return;
+    }
     const song = new songData(
       data.url,
       data.addedBy,
@@ -276,52 +320,12 @@ io.on("connection", (socket) => {
 
     room.queue.push(song);
 
-    // downloadSong(
-    //   song.url,
-    //   __dirname,
-    //   data.roomId,
-    //   song.videoId,
-    //   () => {
-    //     song.isDownloaded = true;
-    //     io.to(data.roomId).emit("set-queue", room.queue);
-    //     tryPlayNext(room);
-    //   },
-    //   () => {
-    //     io.to(data.roomId).emit("set-queue", room.queue);
-    //   }
-    // );
     if (room.queue.length <= 3) {
-    consistentDownload(song, room);
-  }
+      consistentDownload(song, room);
+    }
 
     io.to(data.roomId).emit("set-queue", room.queue);
   });
-
-  //   socket.on("play-prev", (roomId) => {
-  //   const room = getRoom(roomId, rooms);
-  //   if (!room) return;
-
-  //   // ✅ Pop the last played song
-  //   const previous = room.playedHistory.pop();
-  //   if (!previous) return; // No history available
-
-  //   // ✅ Re-insert current song back to front of queue
-  //   if (room.nowPlaying) {z
-  //     room.queue.unshift(room.nowPlaying);
-  //   }
-
-  //   // ✅ Set previous song as now playing
-  //   room.nowPlaying = previous;
-  //   room.startTime = Date.now();
-
-  //   io.to(roomId).emit("set-queue", room.queue);
-
-  //   // ✅ Reset timer
-  //   if (room.timeoutId) clearTimeout(room.timeoutId);
-  //   room.timeoutId = setTimeout(() => {
-  //     tryPlayNext(room);
-  //   }, previous.duration * 1000);
-  // });
 
   //play previous track
   socket.on("play-prev", (roomId) => {
@@ -361,7 +365,13 @@ io.on("connection", (socket) => {
         if (room.members.length === 0) {
           console.log(`Room ${room.roomId} is empty, deleting it.`);
           const roomIndex = rooms.findIndex((obj) => obj.roomId === roomId);
+          clearTimeout(room.timeoutId);
           if (roomIndex !== -1) {
+            for(const song of room.queue){
+            if (song.isDownloading && song.downloadProcess) {
+              song.downloadProcess.kill("SIGTERM");
+              console.log(`🚫 Canceled download for: ${song.videoId}`);
+            }}
             rooms.splice(roomIndex, 1);
             const audioFolderPath = path.join(__dirname, "audio", roomId);
 

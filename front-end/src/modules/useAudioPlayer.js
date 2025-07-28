@@ -23,7 +23,7 @@ const useAudioPlayer = () => {
     }
 
     const audio = new Audio(src);
-     audio.volume = volumeRef.current; 
+    audio.volume = volumeRef.current;
     audioRef.current = audio;
     onEndedRef.current = onEnded;
 
@@ -90,6 +90,51 @@ const useAudioPlayer = () => {
     }
   }, []);
 
+  const load = useCallback((src, offset = 0) => {
+    if (!src) return;
+
+    clearInterval(syncIntervalRef.current);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const audio = new Audio(src);
+    audio.volume = volumeRef.current;
+    audioRef.current = audio;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      if (offset > 0) {
+        audio.currentTime = offset;
+        startTimestampRef.current = Date.now() - offset * 1000;
+      }
+      setCurrentSrc(src);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      clearInterval(syncIntervalRef.current);
+      onEndedRef.current?.();
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      setProgress(audio.duration ? audio.currentTime / audio.duration : 0);
+    };
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.load();
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, []);
+
   const resume = useCallback(() => {
     if (audioRef.current) {
       audioRef.current
@@ -113,16 +158,23 @@ const useAudioPlayer = () => {
     }
   }, []);
 
-  const seek = useCallback((percent) => {
-    if (audioRef.current && audioRef.current.duration) {
-      audioRef.current.currentTime = percent * audioRef.current.duration;
-      // Update timestamp after seeking
-      startTimestampRef.current =
-        Date.now() - audioRef.current.currentTime * 1000;
+  // const seek = useCallback((percent) => {
+  //   if (audioRef.current && audioRef.current.duration) {
+  //     audioRef.current.currentTime = percent * audioRef.current.duration;
+  //     // Update timestamp after seeking
+  //     startTimestampRef.current =
+  //       Date.now() - audioRef.current.currentTime * 1000;
+  //   }
+  // }, []);
+
+  const seek = useCallback((timeInSeconds) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = timeInSeconds;
+      startTimestampRef.current = Date.now() - timeInSeconds * 1000;
     }
   }, []);
 
-   const setVolume = useCallback((value) => {
+  const setVolume = useCallback((value) => {
     volumeRef.current = value;
     if (audioRef.current) {
       audioRef.current.volume = value;
@@ -147,6 +199,8 @@ const useAudioPlayer = () => {
       stop,
       seek,
       setVolume,
+      load,
+
       get isPlaying() {
         return isPlaying;
       },

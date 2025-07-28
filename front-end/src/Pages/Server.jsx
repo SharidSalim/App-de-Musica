@@ -34,7 +34,6 @@ const Server = () => {
 
   const { audio } = useAudioPlayer();
 
-  const [pauseState, setPauseState] = useState(false);
   const [initMember, setInitMember] = useState([]);
   const [chatSection, setChatSection] = useState(false);
   const [chatsInit, setChatsInit] = useState([]);
@@ -96,14 +95,39 @@ const Server = () => {
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
 
-    socketRef.current.on("play-song", ({ path, startTime }) => {
-      const offset = (Date.now() - startTime) / 1000;
-      console.log(path, offset);
+    // socketRef.current.on("play-song", ({ path, startTime }) => {
+    //   const offset = (Date.now() - startTime) / 1000;
+    //   console.log(path, offset);
 
-      audio.play(path, offset); // start playback from offset
-    });
+    //   audio.play(path, offset); // start playback from offset
+    // });
+    // Update the play-song event handler
+    socketRef.current.on(
+      "play-song",
+      ({ path, startTime, paused, elapsed }) => {
+        if (paused) {
+          // Load paused song at specific position
+          console.log("Played paused one");
+          
+          audio.load(path, elapsed / 1000);
+          audio.pause();
+          setServerPaused(true);
+        } else {
+          // Normal playback
+          console.log("Played normal playback");
+          
+          const offset = (Date.now() - startTime) / 1000;
+          audio.play(path, offset);
+          setServerPaused(false);
+        }
+      }
+    );
 
     socketRef.current.on("stop-song", () => audio.stop());
+
+    socketRef.current.on("server-err", (errMsg) => {
+      toast(errMsg);
+    });
 
     return () => {
       if (socketRef.current) {
@@ -119,9 +143,31 @@ const Server = () => {
     if (isAtBottom) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     } else {
-      setShowJumpButton(true); // new chat came, but user is not at bottom
+      setShowJumpButton(true);
     }
   }, [chatsInit]);
+
+  const [serverPaused, setServerPaused] = useState(false);
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.on("play-state-changed", ({ shouldPause, elapsed }) => {
+      if (shouldPause) {
+        audio.pause();
+        // If we have accurate elapsed time, set it
+        if (elapsed) audio.seek(elapsed / 1000);
+      } else {
+        audio.resume();
+      }
+      setServerPaused(shouldPause);
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off("play-state-changed");
+      }
+    };
+  }, [audio]);
 
   return (
     <div className="p-2.5 h-screen overflow-hidden w-full bg-[url(./assets/home_bg.jpg)] background">
@@ -308,7 +354,10 @@ const Server = () => {
                   className="absolute group animate-appear z-10 left-[50%] translate-x-[-50%] bottom-[8px] bg-[#ffffff60]"
                   diameter={"35px"}
                 >
-                  <FaArrowDown size={14} className="text-gray-400 group-hover:text-gray-800" />
+                  <FaArrowDown
+                    size={14}
+                    className="text-gray-400 group-hover:text-gray-800"
+                  />
                 </FuncButton>
               )}
             </div>
@@ -382,9 +431,9 @@ const Server = () => {
             <IoPlaySkipBack
               size={28}
               className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
-              onClick={()=>socketRef.current.emit("play-prev",roomId)}
+              onClick={() => socketRef.current.emit("play-prev", roomId)}
             />
-            {!pauseState ? (
+            {/* {!pauseState ? (
               <FuncButton
                 onClick={(e) => {
                   setPauseState(!pauseState);
@@ -416,7 +465,43 @@ const Server = () => {
                   className="text-gray-100 group-hover:text-white transition duration-300"
                 />
               </FuncButton>
+            )} */}
+
+            {serverPaused ? (
+              <FuncButton
+                onClick={() => {
+                  socketRef.current.emit("toggle-play-state", {
+                    roomId,
+                    shouldPause: false,
+                  });
+                }}
+                className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                diameter={"40px"}
+              >
+                <FaPlay
+                  size={16}
+                  className="text-gray-100 group-hover:text-white transition duration-300"
+                />
+              </FuncButton>
+            ) : (
+              <FuncButton
+                onClick={() => {
+                  socketRef.current.emit("toggle-play-state", {
+                    roomId,
+                    shouldPause: true,
+                    currentTime: audio.currentTime * 1000,
+                  });
+                }}
+                className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                diameter={"40px"}
+              >
+                <FaPause
+                  size={16}
+                  className="text-gray-100 group-hover:text-white transition duration-300"
+                />
+              </FuncButton>
             )}
+
             <IoPlaySkipForward
               size={28}
               onClick={() => socketRef.current.emit("skip-song", roomId)}

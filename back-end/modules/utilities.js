@@ -8,6 +8,7 @@ class roomData {
   members = [];
   queue = [];
   nowPlaying = undefined;
+  paused = false;
   playedHistory = [];
   loadedSongs = 0;
   roomStartTime = Date.now();
@@ -119,7 +120,7 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
     return;
   }
 
-  ytdlp(url, {
+ const song = ytdlp(url, {
     output: outputPath,
     extractAudio: true,
     audioFormat: "mp3",
@@ -127,6 +128,14 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
     maxFilesize: "15M",
     ffmpegLocation: ffmpegPath,
   })
+// const child = yt.createYtDlpAsProcess(url, {
+//   output: outputPath,
+//   extractAudio: true,
+//   audioFormat: "mp3",
+//   audioQuality: "0",
+//   maxFilesize: "15M",
+//   ffmpegLocation: ffmpegPath,
+// })
     .then((output) => {
       const stats = fs.statSync(path.join(outputFolder,`${videoId}.mp3`));
       const fileSizeMB = stats.size / (1024 * 1024);
@@ -148,6 +157,10 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
       Catch();
       console.error("❌ Download failed:", err);
     });
+    console.log(song);
+    
+
+    return song.child
 }
 
 module.exports = {
