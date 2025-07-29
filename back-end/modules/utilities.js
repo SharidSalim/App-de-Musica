@@ -10,7 +10,6 @@ class roomData {
   nowPlaying = undefined;
   paused = false;
   playedHistory = [];
-  loadedSongs = 0;
   roomStartTime = Date.now();
   startTime = undefined;
   timeoutId = undefined;
@@ -18,26 +17,50 @@ class roomData {
   constructor(roomId) {
     this.roomId = roomId;
   }
+  // playPrev() {
+  //   if (this.playedHistory.length === 0) return false;
+
+  //   // Clear current timeout if playing
+  //   if (this.timeoutId) clearTimeout(this.timeoutId);
+
+  //   // Re-insert current song to queue if exists
+  //   const prevSong = this.playedHistory.pop();
+  //   if (this.nowPlaying) {
+  //     this.queue.unshift(prevSong);
+  //     this.queue[0].isDownloaded = false
+  //   }
+
+  //   // Get previous song from history
+
+  //   this.nowPlaying = prevSong;
+  //   this.startTime = Date.now();
+
+  //   // Update queue serial numbers
+  //   this.queue.forEach((s, i) => (s.serial = i + 1));
+
+  //   return true;
+  // }
   playPrev() {
     if (this.playedHistory.length === 0) return false;
 
-    // Clear current timeout if playing
-    if (this.timeoutId) clearTimeout(this.timeoutId);
-
-    // Re-insert current song to queue if exists
-    const prevSong = this.playedHistory[this.playedHistory.length - 1];
-    if (this.nowPlaying) {
-      this.queue.unshift(prevSong);
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
 
-    // Get previous song from history
+    // Get last played song
+    const prevSong = this.playedHistory.pop();
+
+    // If currently playing, move it back to queue
+    if (this.nowPlaying) {
+      this.queue.unshift(this.nowPlaying);
+      this.queue[0].isDownloaded = false;
+    }
 
     this.nowPlaying = prevSong;
-    this.startTime = Date.now();
+    this.startTime = Date.now(); // Reset start time
 
-    // Update queue serial numbers
     this.queue.forEach((s, i) => (s.serial = i + 1));
-
     return true;
   }
 }
@@ -47,6 +70,7 @@ class songData {
 
   isDownloaded = false;
   isDownloading = false;
+  downloadProcess = null;
 
   constructor(url, addedBy, title, channel, thumbnail, videoId, duration) {
     this.url = url;
@@ -103,7 +127,7 @@ function generateRoomCode(n) {
   return ret;
 }
 
-function downloadSong(url, dir, roomId, videoId, then, Catch) {
+function downloadSong(song, dir, roomId, then, Catch) {
   const outputFolder = path.resolve(dir, "audio", roomId);
 
   // Ensure the folder exists
@@ -112,7 +136,7 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
   }
 
   // Construct full output path
-  const outputPath = path.join(outputFolder, `${videoId}.%(ext)s`);
+  const outputPath = path.join(outputFolder, `${song.videoId}.%(ext)s`);
 
   if (fs.existsSync(outputPath)) {
     console.log("✅ File already exists!");
@@ -120,47 +144,48 @@ function downloadSong(url, dir, roomId, videoId, then, Catch) {
     return;
   }
 
- const song = ytdlp(url, {
+  const process = ytdlp.exec(song.url, {
     output: outputPath,
     extractAudio: true,
     audioFormat: "mp3",
     audioQuality: "0",
     maxFilesize: "15M",
     ffmpegLocation: ffmpegPath,
-  })
-// const child = yt.createYtDlpAsProcess(url, {
-//   output: outputPath,
-//   extractAudio: true,
-//   audioFormat: "mp3",
-//   audioQuality: "0",
-//   maxFilesize: "15M",
-//   ffmpegLocation: ffmpegPath,
-// })
+  });
+
+  song.downloadProcess = process;
+  console.log(song);
+
+  song.downloadProcess
     .then((output) => {
-      const stats = fs.statSync(path.join(outputFolder,`${videoId}.mp3`));
+      const stats = fs.statSync(path.join(outputFolder, `${song.videoId}.mp3`));
       const fileSizeMB = stats.size / (1024 * 1024);
 
       if (fileSizeMB > 15) {
-        console.warn("❌ File too big, deleting:", videoId);
+        console.warn("❌ File too big, deleting:", song.videoId);
         fs.unlinkSync(outputPath);
         throw new Error("File size exceeds 15MB");
       }
 
       console.log("✅ Download complete!");
-      console.log(`Saved as: ${videoId}.mp3 (${fileSizeMB.toFixed(2)}MB)`);
+      console.log(`Saved as: ${song.videoId}.mp3 (${fileSizeMB.toFixed(2)}MB)`);
       then();
+      song.downloadProcess = undefined
     })
     .catch((err) => {
-      if (fs.existsSync(outputPath)) {
-        fs.unlinkSync(outputPath);
+      if (err.isCanceled) {
+        console.log(`Download canceled: ${song.videoId}`);
+      } else {
+        if (fs.existsSync(outputPath)) {
+          fs.unlinkSync(outputPath);
+        }
       }
       Catch();
+      song.downloadProcess = undefined
       console.error("❌ Download failed:", err);
     });
-    console.log(song);
-    
 
-    return song.child
+  return process;
 }
 
 module.exports = {
