@@ -43,7 +43,7 @@ app.use(
 
 function deleteSongFile(room, songId) {
   if (room.nowPlaying && room.nowPlaying.videoId === songId) return;
-  
+
   const audioFolderPath = path.join(__dirname, "audio", room.roomId);
   const filePath = path.join(audioFolderPath, `${songId}.mp3`);
 
@@ -127,6 +127,7 @@ function handleseekTime(room, seektime) {
   if (!room || !room.nowPlaying) return;
   if (room.queue[0].isDownloading) return;
   if (!room.paused) {
+    room.startTime = Date.now() - seektime * 1000;
     clearTimeout(room.timeoutId);
     room.timeoutId = setTimeout(() => {
       deleteSongFile(room, room.nowPlaying.videoId);
@@ -196,8 +197,13 @@ app.get("/rooms", (req, res) => {
 
 app.get("/rooms/:id", (req, res) => {
   const roomInfo = rooms.find((obj) => obj.roomId === req.params.id);
-  const { timeoutId, ...safeRoomInfo } = roomInfo;
-  res.send(safeRoomInfo);
+
+  if (roomInfo) {
+    const { timeoutId, ...safeRoomInfo } = roomInfo;
+    return res.send(safeRoomInfo);
+  } else {
+    return res.status(404).json({ message: "Server not found" });
+  }
 });
 
 // Socket.io connection
@@ -247,6 +253,7 @@ io.on("connection", (socket) => {
           socket.emit("play-song", {
             path: currentSong.path(PORT, room.roomId),
             startTime: room.startTime,
+            serverTime: Date.now(),
           });
         }
       }
@@ -355,10 +362,14 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("seek-event", ({ roomId, newTime }) => {
+  socket.on("seek-event", ({ roomId, newTime, clientTime }) => {
     const room = getRoom(roomId, rooms);
     handleseekTime(room, newTime);
-    io.to(roomId).emit("handle-seek", newTime);
+    io.to(roomId).emit("handle-seek", {
+      newTime,
+      serverTime: Date.now(),
+      clientTime,
+    });
   });
 
   //add a new song

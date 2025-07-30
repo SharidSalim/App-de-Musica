@@ -98,7 +98,7 @@ const Server = () => {
 
     socketRef.current.on(
       "play-song",
-      ({ path, startTime, paused, elapsed }) => {
+      ({ path, startTime, paused, elapsed, serverTime }) => {
         if (paused) {
           // Load paused song at specific position
           console.log("Played paused one");
@@ -108,9 +108,16 @@ const Server = () => {
           setServerPaused(true);
         } else {
           // Normal playback
-          console.log("Played normal playback");
+          // console.log("Played normal playback");
 
-          const offset = (Date.now() - startTime) / 1000;
+          // const offset = (Date.now() - startTime) / 1000;
+          // audio.play(path, offset);
+          // setServerPaused(false);
+          const clientTime = Date.now();
+          const timeDrift = clientTime - serverTime;
+          const adjustedStartTime = startTime + timeDrift;
+          const offset = (clientTime - adjustedStartTime) / 1000;
+
           audio.play(path, offset);
           setServerPaused(false);
         }
@@ -119,7 +126,10 @@ const Server = () => {
 
     socketRef.current.on("stop-song", () => audio.stop());
 
-    socketRef.current.on('handle-seek',newTime=>audio.seek(newTime))
+    // socketRef.current.on('handle-seek',newTime=>audio.seek(newTime))
+    socketRef.current.on("handle-seek", ({ newTime, serverTime }) => {
+      audio.seekWithSync(newTime, serverTime);
+    });
 
     socketRef.current.on("server-err", (errMsg) => {
       toast(errMsg);
@@ -150,11 +160,20 @@ const Server = () => {
   const handleChange = (e) => {
     setSeekValue(e.target.value);
   };
-  
+
+  // const handleSeekCommit = () => {
+  //   const newTime = (seekValue / 100) * audio.duration;
+  //   setIsDragging(false);
+  //   socketRef.current.emit("seek-event",{roomId, newTime})
+  // };
   const handleSeekCommit = () => {
     const newTime = (seekValue / 100) * audio.duration;
     setIsDragging(false);
-    socketRef.current.emit("seek-event",{roomId, newTime})
+    socketRef.current.emit("seek-event", {
+      roomId,
+      newTime,
+      clientTime: Date.now(),
+    });
   };
   // useEffect(() => {
   //   if (!isDragging) {

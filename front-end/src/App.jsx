@@ -8,7 +8,7 @@ import { TbReload } from "react-icons/tb";
 import { ToastContainer, toast, Slide } from "react-toastify";
 import PublicRooms from "./components/PublicRooms";
 import { calculateTimePassed } from "./modules/utilities";
-import PlaceholderDiv from "./components/PlaceholderDiv"
+import PlaceholderDiv from "./components/PlaceholderDiv";
 
 const App = () => {
   const navigate = useNavigate();
@@ -239,15 +239,20 @@ const App = () => {
                           try {
                             const res = await axios.get(`${URL}/rooms/${code}`);
 
-                            if (res.data !== "") {
-                              navigate("/room/" + code, {
-                                state: { userName },
-                              });
+                            if (res) {
+                              if (res.data.members.length >= 15) {
+                                toast("This room is currently full");
+                              } else
+                                navigate("/room/" + code, {
+                                  state: { userName },
+                                });
                             } else {
                               toast("Server doesn't Exist");
                             }
                           } catch (err) {
-                            toast("Can't connect to server");
+                            err.status === 404
+                              ? toast(err.response.data.message)
+                              : toast("Cant Connect to server");
                           }
                         }}
                       >
@@ -279,7 +284,10 @@ const App = () => {
                         }}
                       />
                     </div>
-                    <PlaceholderDiv msg={"There are no public servers"} className="w-full px-2.5 h-[385px] overflow-y-auto scrollbar">
+                    <PlaceholderDiv
+                      msg={"There are no public servers"}
+                      className="w-full px-2.5 h-[385px] overflow-y-auto scrollbar"
+                    >
                       {publicRooms &&
                         publicRooms.map((room) => (
                           <PublicRooms

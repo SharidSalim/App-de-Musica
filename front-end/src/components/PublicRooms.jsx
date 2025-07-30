@@ -14,8 +14,13 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
         const res = await axios.get(
           `http://localhost:3001/rooms/${idRef.current}`
         );
-        if (res.data !== "") {
-          navigate("/room/" + idRef.current, { state: { userName: name } });
+        if (res) {
+          if (res.data.members.length >= 15) {
+            toast("This room is currently full");
+          } else
+            navigate("/room/" + code, {
+              state: { userName: name },
+            });
         } else {
           toast("Server doesn't Exist", {
             position: "top-center",
@@ -25,7 +30,9 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
           });
         }
       } catch (err) {
-        toast("Can't connect to server");
+        err.status === 404
+          ? toast(err.response.data.message)
+          : toast("Cant Connect to server");
       }
     } else {
       toast("Enter your name");
