@@ -64,6 +64,7 @@ const Server = () => {
     if (isUserAtBottom) setShowJumpButton(false);
   };
 
+  //Socket events
   useEffect(() => {
     if ("") {
       navigate("/");
@@ -95,27 +96,20 @@ const Server = () => {
 
     socketRef.current.on("update-join", (a) => setInitMember(a));
 
-    // socketRef.current.on("play-song", ({ path, startTime }) => {
-    //   const offset = (Date.now() - startTime) / 1000;
-    //   console.log(path, offset);
-
-    //   audio.play(path, offset); // start playback from offset
-    // });
-    // Update the play-song event handler
     socketRef.current.on(
       "play-song",
       ({ path, startTime, paused, elapsed }) => {
         if (paused) {
           // Load paused song at specific position
           console.log("Played paused one");
-          
+
           audio.load(path, elapsed / 1000);
           audio.pause();
           setServerPaused(true);
         } else {
           // Normal playback
           console.log("Played normal playback");
-          
+
           const offset = (Date.now() - startTime) / 1000;
           audio.play(path, offset);
           setServerPaused(false);
@@ -124,6 +118,8 @@ const Server = () => {
     );
 
     socketRef.current.on("stop-song", () => audio.stop());
+
+    socketRef.current.on('handle-seek',newTime=>audio.seek(newTime))
 
     socketRef.current.on("server-err", (errMsg) => {
       toast(errMsg);
@@ -139,6 +135,7 @@ const Server = () => {
     };
   }, [socketRef, roomId]);
 
+  //Jump to recent chats
   useEffect(() => {
     if (isAtBottom) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -146,6 +143,24 @@ const Server = () => {
       setShowJumpButton(true);
     }
   }, [chatsInit]);
+
+  //track progress update
+  const [seekValue, setSeekValue] = useState(audio.progress * 100);
+  const [isDragging, setIsDragging] = useState(false);
+  const handleChange = (e) => {
+    setSeekValue(e.target.value);
+  };
+  
+  const handleSeekCommit = () => {
+    const newTime = (seekValue / 100) * audio.duration;
+    setIsDragging(false);
+    socketRef.current.emit("seek-event",{roomId, newTime})
+  };
+  // useEffect(() => {
+  //   if (!isDragging) {
+  //     setSeekValue(audio.progress * 100);
+  //   }
+  // }, [audio.progress]);
 
   const [serverPaused, setServerPaused] = useState(false);
   useEffect(() => {
@@ -519,8 +534,15 @@ const Server = () => {
               className="w-[475px] h-1 mx-3"
               value={audio.progress * 100}
               type="range"
+              min={0}
+              max={100}
               name=""
               id=""
+              onChange={handleChange}
+              onMouseDown={() => setIsDragging(true)}
+              onMouseUp={handleSeekCommit}
+              onTouchStart={() => setIsDragging(true)}
+              onTouchEnd={handleSeekCommit}
             />
 
             <p

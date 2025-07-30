@@ -158,7 +158,7 @@ const useAudioPlayer = () => {
     }
   }, []);
 
-  // const seek = useCallback((percent) => {
+  // const seekUsingPercent = useCallback((percent) => {
   //   if (audioRef.current && audioRef.current.duration) {
   //     audioRef.current.currentTime = percent * audioRef.current.duration;
   //     // Update timestamp after seeking
@@ -200,6 +200,7 @@ const useAudioPlayer = () => {
       seek,
       setVolume,
       load,
+     
 
       get isPlaying() {
         return isPlaying;

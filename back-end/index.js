@@ -42,6 +42,8 @@ app.use(
 );
 
 function deleteSongFile(room, songId) {
+  if (room.nowPlaying && room.nowPlaying.videoId === songId) return;
+  
   const audioFolderPath = path.join(__dirname, "audio", room.roomId);
   const filePath = path.join(audioFolderPath, `${songId}.mp3`);
 
@@ -69,7 +71,7 @@ function tryPlayNext(room) {
   }
 
   if (next.isDownloaded && room.nowPlaying === undefined) {
-    clearTimeout(room.timeoutId)
+    clearTimeout(room.timeoutId);
     room.nowPlaying = next;
 
     room.startTime = Date.now();
@@ -118,6 +120,24 @@ function togglePlayState(room, shouldPause, clientTime) {
       io.to(room.roomId).emit("set-queue", room.queue);
       tryPlayNext(room);
     }, room.nowPlaying.duration * 1000 - room.elapsedBeforePause);
+  }
+}
+
+function handleseekTime(room, seektime) {
+  if (!room || !room.nowPlaying) return;
+  if (room.queue[0].isDownloading) return;
+  if (!room.paused) {
+    clearTimeout(room.timeoutId);
+    room.timeoutId = setTimeout(() => {
+      deleteSongFile(room, room.nowPlaying.videoId);
+      room.queue.shift();
+      room.queue.forEach((s, i) => (s.serial = i + 1));
+      room.nowPlaying = undefined;
+      io.to(room.roomId).emit("set-queue", room.queue);
+      tryPlayNext(room);
+    }, room.nowPlaying.duration * 1000 - seektime * 1000);
+  } else {
+    room.elapsedBeforePause = seektime * 1000;
   }
 }
 
@@ -283,9 +303,9 @@ io.on("connection", (socket) => {
     const room = getRoom(roomId, rooms);
     if (!room) return;
 
-    if(room.playedHistory.length===0){
-      sendErrorMsg("Play few songs first!")
-      return
+    if (room.playedHistory.length === 0) {
+      sendErrorMsg("Play few songs first!");
+      return;
     }
 
     if (room.queue[0].isDownloading) {
@@ -335,6 +355,12 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("seek-event", ({ roomId, newTime }) => {
+    const room = getRoom(roomId, rooms);
+    handleseekTime(room, newTime);
+    io.to(roomId).emit("handle-seek", newTime);
+  });
+
   //add a new song
   socket.on("add-song", (data) => {
     const room = getRoom(data.roomId, rooms);
@@ -365,8 +391,6 @@ io.on("connection", (socket) => {
     io.to(data.roomId).emit("set-queue", room.queue);
   });
 
-
-
   //disconnect from server
   socket.on("disconnect", () => {
     let roomId = null;
@@ -378,10 +402,11 @@ io.on("connection", (socket) => {
           `${socket.socketSession.name}(${socket.socketSession.id}) left the room ${roomId}`
         );
         room.members.splice(index, 1);
-        if(socket.socketSession.rank === "host"){
-          const newHost = room.members[getRandomInt(0, room.members.length-1)]
-          if(newHost){
-            newHost.rank = "host"
+        if (socket.socketSession.rank === "host") {
+          const newHost =
+            room.members[getRandomInt(0, room.members.length - 1)];
+          if (newHost) {
+            newHost.rank = "host";
           }
         }
         io.to(roomId).emit("update-join", room.members);
