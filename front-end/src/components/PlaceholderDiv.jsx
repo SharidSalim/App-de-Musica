@@ -10,7 +10,7 @@ const PlaceholderDiv = ({ id, children, className, msg }) => {
           : ""
       } ${className}`}
     >
-      {React.Children.count(children) > 0 ? children : <p className="font-poppins text-gray-400 text-[14px] font-extralight">{msg}</p>}
+      {React.Children.count(children) > 0 ? children : <p className="font-poppins text-txt-secondary text-[14px] font-light">{msg}</p>}
     </div>
   );
 };

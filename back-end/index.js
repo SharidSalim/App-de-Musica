@@ -234,7 +234,7 @@ io.on("connection", (socket) => {
         id: socket.id,
       });
 
-      socket.emit("set-chat", rooms.chats);
+      socket.emit("set-chat", room.chats);
       socket.emit("set-queue", room.queue);
       socket.emit("get-server-status", room.roomState);
 

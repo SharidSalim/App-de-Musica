@@ -18,7 +18,7 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
           if (res.data.members.length >= 15) {
             toast("This room is currently full");
           } else
-            navigate("/room/" + code, {
+            navigate("/room/" + idRef.current, {
               state: { userName: name },
             });
         } else {
@@ -30,6 +30,8 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
           });
         }
       } catch (err) {
+        console.log(err);
+        
         err.status === 404
           ? toast(err.response.data.message)
           : toast("Cant Connect to server");
@@ -40,13 +42,13 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
   }
 
   return (
-    <div className="w-full py-1 px-2.5 border-2 border-gray-200 rounded-md shadow-md group focus-within:border-gray-400 transition">
+    <div className="w-full py-1 px-2.5 border-2 border-txt-primary rounded-md shadow-md group focus-within:border-accent transition">
       <div className="flex items-center justify-between cursor-pointer">
-        <h1 className="font-poppins font-medium text-sm text-gray-500">{id}</h1>
-        <p className="font-poppins font-medium text-sm text-gray-500">
+        <h1 className="font-poppins font-medium text-sm text-txt-primary">{id}</h1>
+        <p className="font-poppins font-medium text-sm text-txt-secondary">
           {passedTime}
         </p>
-        <p className="font-poppins font-medium text-sm text-gray-500">
+        <p className="font-poppins font-medium text-sm text-txt-primary">
           {memberNum}/15
         </p>
       </div>
@@ -65,11 +67,11 @@ const PublicRooms = ({ id, memberNum, passedTime }) => {
             }
           }}
           placeholder="Enter your name"
-          className="outline-none font-poppins text-sm bg-transparent text-gray-700 w-full"
+          className="outline-none text-txt-primary font-poppins text-sm bg-transparent placeholder:text-txt-secondary w-full"
         />
         <button
           onClick={handleJoin}
-          className="bg-[#CCEBE6] text-white px-4 py-0.5 cursor-pointer rounded-md shrink-0"
+          className="bg-db-tertiary text-txt-primary px-4 py-0.5 cursor-pointer rounded-md shrink-0 hover:bg-accent hover:text-db-primary transition duration-300"
         >
           Join
         </button>

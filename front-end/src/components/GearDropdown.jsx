@@ -59,7 +59,7 @@ const GearDropdown = ({setServerStatus, status}) => {
       <FaGear
         size={22}
         onClick={() => setDropdownOpen((prev) => !prev)}
-        className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+        className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
       />
     </div>
   );

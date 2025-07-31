@@ -1,4 +1,5 @@
 import React from "react";
+import { FaMusic } from "react-icons/fa";
 import { Link } from "react-router";
 
 const PlayingSong = ({ url, name, channel }) => {
@@ -9,11 +10,11 @@ const PlayingSong = ({ url, name, channel }) => {
           style={{
             backgroundImage: `url("${url}")`,
           }}
-          className="w-[67px] background  h-[67px] rounded-lg"
+          className="w-12 background  h-12 rounded-lg"
         ></div>
       ) : (
-        <div className="w-[67px] bg-gray-200 font-poppins text-black font-bold text-2xl flex items-center justify-center  h-[67px] rounded-lg">
-          ?
+        <div className="w-12 bg-db-tertiary font-poppins text-black font-bold text-2xl flex items-center justify-center  h-12 rounded-lg">
+          <FaMusic size={20} className="text-txt-secondary" />
         </div>
       )}
 
@@ -27,12 +28,12 @@ const PlayingSong = ({ url, name, channel }) => {
           </span>
         </p>
       ) : (
-        <p className="leading-4 ml-2 w-[190px] truncate text-white">
-          <span className="font-semibold font-poppins text-[14px]">
-            Not Playing anything
+        <p className="leading-4 ml-2 w-[190px] truncate">
+          <span className="font-semibold font-poppins text-txt-primary text-[14px]">
+            No Tracks Loaded
           </span>
           <br />
-          <span className="text-[12px] font-poppins font-semibold text-gray-200">
+          <span className="text-[12px] font-poppins font-semibold text-txt-secondary">
             Unknown
           </span>
         </p>

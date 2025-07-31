@@ -175,16 +175,17 @@ const useAudioPlayer = () => {
   }, []);
 
   // Add this new function to handle synchronized seeking
-const seekWithSync = useCallback((timeInSeconds, serverTime) => {
-  if (audioRef.current) {
-    // Calculate drift compensation
-    const clientTime = Date.now();
-    const serverOffset = serverTime - clientTime;
-    
-    audioRef.current.currentTime = timeInSeconds;
-    startTimestampRef.current = clientTime - timeInSeconds * 1000 - serverOffset;
-  }
-}, []);
+  const seekWithSync = useCallback((timeInSeconds, serverTime) => {
+    if (audioRef.current) {
+      // Calculate drift compensation
+      const clientTime = Date.now();
+      const serverOffset = serverTime - clientTime;
+
+      audioRef.current.currentTime = timeInSeconds;
+      startTimestampRef.current =
+        clientTime - timeInSeconds * 1000 - serverOffset;
+    }
+  }, []);
 
   const setVolume = useCallback((value) => {
     volumeRef.current = value;
@@ -212,7 +213,7 @@ const seekWithSync = useCallback((timeInSeconds, serverTime) => {
       seek,
       setVolume,
       load,
-     seekWithSync,
+      seekWithSync,
 
       get isPlaying() {
         return isPlaying;

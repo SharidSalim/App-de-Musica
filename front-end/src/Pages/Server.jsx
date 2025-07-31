@@ -126,7 +126,6 @@ const Server = () => {
 
     socketRef.current.on("stop-song", () => audio.stop());
 
-    // socketRef.current.on('handle-seek',newTime=>audio.seek(newTime))
     socketRef.current.on("handle-seek", ({ newTime, serverTime }) => {
       audio.seekWithSync(newTime, serverTime);
     });
@@ -175,11 +174,6 @@ const Server = () => {
       clientTime: Date.now(),
     });
   };
-  // useEffect(() => {
-  //   if (!isDragging) {
-  //     setSeekValue(audio.progress * 100);
-  //   }
-  // }, [audio.progress]);
 
   const [serverPaused, setServerPaused] = useState(false);
   useEffect(() => {
@@ -204,20 +198,20 @@ const Server = () => {
   }, [audio]);
 
   return (
-    <div className="p-2.5 h-screen overflow-hidden w-full bg-[url(./assets/home_bg.jpg)] background">
+    <div className="p-2.5 h-screen overflow-hidden w-full bg-db-primary background">
       <div
         id="UpperSection"
         className="flex justify-between h-[calc(100%-86px-12px)]"
       >
         <div
           id="Queue"
-          className="bg-[#ffffff15] shadow-md h-full w-[241px] rounded-xl p-1.5"
+          className="glass-effect shadow-md h-full w-[241px] rounded-xl p-1.5"
         >
           <div className="flex h-[31.5px] items-center justify-between">
-            <h1 className="text-[21px] font-poppins text-white font-semibold ml-[14px]">
+            <h1 className="text-[21px] font-poppins text-txt-primary font-semibold ml-[14px]">
               Queue
             </h1>
-            <p className="mr-[14px] text-sm font-poppins text-white">
+            <p className="mr-[14px] text-sm font-poppins text-accent">
               {queueInit.length}
             </p>
           </div>
@@ -239,19 +233,19 @@ const Server = () => {
 
         <div
           id="Spinner"
-          className="w-[calc(100%-(241px*2))] shadow-md relative bg-[#ffffff05]  mx-3 rounded-xl"
+          className="w-[calc(100%-(241px*2))] shadow-md relative bg-[#ffffff02]  mx-3 rounded-xl"
         >
           <div
             onClick={() => {
               navigator.clipboard.writeText(roomId);
             }}
-            className="absolute cursor-pointer  bg-[#e9e5e5e1] m-2 rounded-md py-1 px-10"
+            className="absolute cursor-pointer  bg-db-tertiary m-2 rounded-md py-1 px-10"
           >
-            <h1 className="font-poppins text-sm font-semibold text-gray-600">
+            <h1 className="font-poppins text-sm font-semibold text-accent">
               {roomId}
             </h1>
           </div>
-          <div
+          {/* <div
             id="Search"
             className="absolute p-2 bottom-0 right-1/2 translate-x-1/2 mb-5  gap-2.5 border-b-2 border-b-transparent  flex items-center"
           >
@@ -292,7 +286,7 @@ const Server = () => {
               value={songURL}
               autoComplete="off"
               id="SearchSong"
-              className="outline-none text-[12px] placeholder:text-[16px] placeholder:font-raleway  placeholder:text-gray-50 font-raleway text-md "
+              className="outline-none text-txt-primary font-poppins text-sm bg-transparent placeholder:text-txt-secondary"
             />
             <FaSearch
               onClick={async () => {
@@ -320,21 +314,118 @@ const Server = () => {
                 setSongURL("");
               }}
               size={22}
-              className="text-gray-100  cursor-pointer hover:text-white transition duration-300"
+              className="text-txt-secondary  cursor-pointer hover:text-white transition duration-300"
             />
+          </div> */}
+          <div
+            id="Search"
+            className="group absolute p-2 bottom-0 right-1/2 translate-x-1/2 mb-5 gap-2.5 flex items-center"
+          >
+            <input
+              type="url"
+              placeholder="Enter song URL"
+              value={songURL}
+              onChange={(e) => setSongURL(e.target.value.trim())}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter") {
+                  if (songURL !== "") {
+                    try {
+                      const { title, channel, thumbnail, videoId, duration } =
+                        await getVideoDetails(
+                          songURL,
+                          import.meta.env.VITE_REACT_YT_API_KEY
+                        );
+
+                      socketRef.current.emit("add-song", {
+                        url: songURL,
+                        addedBy: JSON.parse(userData).name,
+                        roomId,
+                        title,
+                        channel,
+                        thumbnail,
+                        videoId,
+                        duration,
+                      });
+                    } catch (err) {
+                      toast("Something went wrong");
+                    }
+                  } else {
+                    toast("Enter Song URL");
+                  }
+                  setSongURL("");
+                }
+              }}
+              id="SearchSong"
+              autoComplete="off"
+              className={`
+      w-0 
+      group-hover:w-[276px] 
+      focus:w-[276px]
+      bg-transparent 
+      outline-none 
+      text-sm 
+      placeholder:text-txt-secondary 
+      text-txt-primary 
+      border-b-2 
+      border-transparent 
+      focus:border-teal-300 
+      transition-all 
+      duration-300 
+      font-poppins
+    `}
+            />
+
+            <FaSearch
+              onClick={async () => {
+                if (songURL !== "") {
+                  try {
+                    const { title, channel, thumbnail, videoId, duration } =
+                      await getVideoDetails(
+                        songURL,
+                        import.meta.env.VITE_REACT_YT_API_KEY
+                      );
+
+                    socketRef.current.emit("add-song", {
+                      url: songURL,
+                      addedBy: JSON.parse(userData).name,
+                      roomId,
+                      title,
+                      channel,
+                      thumbnail,
+                      videoId,
+                      duration,
+                    });
+                  } catch (err) {
+                    toast("Something went wrong");
+                  }
+                } else {
+                  toast("Enter Song URL");
+                }
+                setSongURL("");
+              }}
+              size={22}
+              className="text-txt-secondary cursor-pointer hover:text-accent transition duration-300"
+            />
+          </div>
+
+          <div
+            id="Blur"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[323px] h-[323px]"
+          >
+            <div className="w-full h-full rounded-full bg-accent opacity-20 blur-3xl animate-pulsate"></div>
           </div>
         </div>
 
         {!chatSection ? (
           <div
             id="Friends"
-            className="bg-[#ffffff15] shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
+            className="glass-effect shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
           >
             <div className="flex h-[31.5px] items-center justify-between">
-              <h1 className="text-[21px] font-poppins text-white font-semibold ml-[14px]">
+              <h1 className="text-[21px] font-poppins text-txt-primary font-semibold ml-[14px]">
                 Friends
               </h1>
-              <p className="mr-[14px] text-sm font-poppins text-white">
+              <p className="mr-[14px] text-sm font-poppins text-accent">
                 {initMember.length}/15
               </p>
             </div>
@@ -351,9 +442,9 @@ const Server = () => {
         ) : (
           <div
             id="Chats"
-            className="bg-[#ffffff15] shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
+            className="glass-effect shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
           >
-            <h1 className="text-[21px] h-[31.5px] font-poppins text-white font-semibold ml-[14px]">
+            <h1 className="text-[21px] h-[31.5px] font-poppins text-txt-primary font-semibold ml-[14px]">
               Chats
             </h1>
             <div className="flex relative flex-col justify-end h-[calc(100%-31.5px-35px)]">
@@ -420,7 +511,7 @@ const Server = () => {
                     }
                   }
                 }}
-                className="outline-none"
+                className="text-txt-primary placeholder:text-txt-secondary outline-none"
                 placeholder="Message..."
                 type="text"
                 name=""
@@ -444,7 +535,7 @@ const Server = () => {
                   }
                 }}
                 size={20}
-                className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
               />
             </div>
           </div>
@@ -453,7 +544,7 @@ const Server = () => {
 
       <div
         id="PlayBar"
-        className="h-[86px] p-2 flex shadow-lg justify-between items-center bg-[#ffffff15] rounded-xl mt-3"
+        className="h-[86px] p-2 flex shadow-lg justify-evenly items-center glass-effect rounded-xl mt-3"
       >
         <PlayingSong
           name={queueInit[0]?.title}
@@ -461,47 +552,14 @@ const Server = () => {
           channel={queueInit[0]?.channel}
         />
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-x-5 my-1.5">
+          <div className="flex items-center gap-x-3.5 my-1.5">
             <IoPlaySkipBack
-              size={28}
-              className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+              size={20}
+              className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
               onClick={() => socketRef.current.emit("play-prev", roomId)}
             />
-            {/* {!pauseState ? (
-              <FuncButton
-                onClick={(e) => {
-                  setPauseState(!pauseState);
-                  pauseState ? audio.pause() : audio.resume();
-                }}
-                className={
-                  "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
-                }
-                diameter={"40px"}
-              >
-                <FaPlay
-                  size={16}
-                  className="text-gray-100 group-hover:text-white transition duration-300"
-                />
-              </FuncButton>
-            ) : (
-              <FuncButton
-                onClick={(e) => {
-                  setPauseState(!pauseState);
-                  pauseState ? audio.pause() : audio.resume();
-                }}
-                className={
-                  "group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
-                }
-                diameter={"40px"}
-              >
-                <FaPause
-                  size={16}
-                  className="text-gray-100 group-hover:text-white transition duration-300"
-                />
-              </FuncButton>
-            )} */}
 
-            {serverPaused ? (
+            {/* {serverPaused ? (
               <FuncButton
                 onClick={() => {
                   socketRef.current.emit("toggle-play-state", {
@@ -534,18 +592,51 @@ const Server = () => {
                   className="text-gray-100 group-hover:text-white transition duration-300"
                 />
               </FuncButton>
+            )} */}
+
+            {serverPaused ? (
+              <button
+                onClick={() => {
+                  socketRef.current.emit("toggle-play-state", {
+                    roomId,
+                    shouldPause: false,
+                  });
+                }}
+                className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
+              >
+                <FaPlay
+                  size={14}
+                  className="text-txt-secondary group-hover:text-db-primary transition duration-300 ml-1"
+                />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  socketRef.current.emit("toggle-play-state", {
+                    roomId,
+                    shouldPause: true,
+                    currentTime: audio.currentTime * 1000,
+                  });
+                }}
+                className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
+              >
+                <FaPause
+                  size={14}
+                  className="text-txt-secondary group-hover:text-db-primary transition duration-300"
+                />
+              </button>
             )}
 
             <IoPlaySkipForward
-              size={28}
+              size={20}
               onClick={() => socketRef.current.emit("skip-song", roomId)}
-              className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+              className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
             />
           </div>
           <div className="flex items-center">
             <p
               id="timer"
-              className="font-poppins font-medium w-6 text-[12.5px] text-white"
+              className="font-poppins font-medium w-6 text-[12.5px] text-txt-secondary"
             >
               {formatTime(audio.currentTime)}
             </p>
@@ -566,7 +657,7 @@ const Server = () => {
 
             <p
               id="duration"
-              className="font-poppins w-6 font-medium text-[12.5px] text-white"
+              className="font-poppins w-6 font-medium text-[12.5px] text-txt-secondary"
             >
               {formatTime(audio.duration)}
             </p>
@@ -577,7 +668,7 @@ const Server = () => {
             onClick={() => {
               navigate("/");
             }}
-            className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+            className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
             size={22}
           />
 
@@ -597,14 +688,14 @@ const Server = () => {
             >
               {chatNotify && (
                 <span className="absolute top-0 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-300 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-400"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
                 </span>
               )}
 
               <IoChatbubbleSharp
                 size={22}
-                className="text-gray-100 hover:text-white transition duration-300"
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
               />
             </div>
           ) : (
@@ -614,13 +705,13 @@ const Server = () => {
                 setChatNotify(false);
               }}
               size={22}
-              className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+              className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
             />
           )}
           <div className="flex items-center">
             {volume > 0 ? (
               <FaVolumeHigh
-                className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
                 size={22}
                 onClick={() => {
                   setVolume(0);
@@ -629,7 +720,7 @@ const Server = () => {
               />
             ) : (
               <FaVolumeXmark
-                className="cursor-pointer text-gray-100 hover:text-white transition duration-300"
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
                 size={22}
                 onClick={() => {
                   setVolume(50);
