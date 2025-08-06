@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 const PlayingSong = ({ url, name, channel }) => {
   return (
-    <div className="flex items-center">
+    <div className="lg:flex hidden items-center ">
       {url ? (
         <div
           style={{

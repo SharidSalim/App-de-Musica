@@ -31,34 +31,35 @@ const App = () => {
         <div className="container">
           <div
             id="wrapper"
-            className="w-full h-screen flex  items-center justify-between"
+            className="w-full h-screen flex flex-col lg:flex-row items-center justify-center lg:justify-between"
           >
-            <div className="flex flex-col gap-8">
-              <h1 className="font-bold text-txt-primary font-poppins text-7xl ">
+            <div className="flex flex-col gap-12 lg:gap-8">
+              <h1 className="font-bold text-txt-primary lg:pt-15 font-poppins text-7xl text-center lg:text-left">
                 <span className="gradient-text">LIVE </span>
                 <br />
                 STREAM <br />
                 <span className="gradient-text">MUSIC</span>
               </h1>
-              <p className="text-lg text-txt-secondary font-poppins  max-w-md">
+              <p className="text-lg  text-center lg:text-left text-txt-secondary font-poppins max-w-md">
                 Stream your favorite music in real-time with friends. Create or
                 join a room and enjoy the experience together.
               </p>
 
               <button
                 onClick={() => setOpenModal(!openModal)}
-                className="bg-db-tertiary w-[185px] font-poppins hover:bg-db-secondary text-accent py-3 px-8 rounded-full flex items-center justify-center gap-2 mx-auto md:mx-0 transition-all duration-300 btn-hover-effect"
+                className="bg-db-tertiary w-[185px] font-poppins hover:bg-db-secondary text-accent py-3 px-8 rounded-full
+                 flex items-center justify-center gap-2 mx-auto lg:mx-0 transition-all duration-300 btn-hover-effect"
               >
                 <FaPlay size={16} />
                 <span className="font-medium">Get Started</span>
               </button>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex absolute lg:static  justify-center">
               <div className="relative w-64 h-64">
-                <div className="absolute inset-[-47px] bg-accent opacity-20 rounded-full blur-3xl animate-pulsate"></div>
+                <div className="absolute inset-[-47px] bg-[#5eead455] opacity-20 rounded-full blur-3xl animate-pulsate"></div>
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
-                  <FaMusic size={120} className="text-white opacity-80" />
+                  <FaMusic size={120} className="text-white opacity-80 hidden lg:block" />
                 </div>
               </div>
             </div>
@@ -74,17 +75,17 @@ const App = () => {
               setOpenModal(!openModal);
               setRoomUI("");
             }}
-            className={`fixed top-0 backdrop-blur-sm left-0 w-full h-screen bg-[#00000070] animate-appear`}
+            className={`fixed top-0 backdrop-blur-sm left-0 w-full h-screen bg-[#00000060] animate-appear`}
           ></div>
           <div
-            className={`w-[746px] bg-white glass-effect h-[482px] drop-shadow-2xl flex animate-appear2`}
+            className={`max-w-[746px]  bg-white glass-effect h-[482px] drop-shadow-2xl flex animate-appear2`}
           >
-            <div className="h-full w-[256px] background bg-[url(./assets/bg.jpg)]"></div>
+            <div className="hidden lg:block h-full w-[256px] background bg-[url(./assets/bg.jpg)]"></div>
             <div
               style={{ display: roomUI === "" ? "flex" : "none" }}
-              className="w-[calc(746px-256px)] flex flex-col gap-y-14 items-center justify-center "
+              className="lg:w-[calc(746px-256px)] w-[330px]  flex flex-col gap-y-14 items-center justify-center "
             >
-              <h1 className="font-raleway  font-medium gradient-text text-3xl">
+              <h1 className="font-raleway font-medium gradient-text text-3xl">
                 Enter the Hangout!
               </h1>
               <div className="flex font-raleway flex-col gap-y-3.5 font-medium text-xl">
@@ -105,7 +106,7 @@ const App = () => {
             {(() => {
               if (roomUI === "createUI") {
                 return (
-                  <div className="w-[calc(746px-256px)] flex flex-col gap-y-14 items-center justify-center">
+                  <div className="lg:w-[calc(746px-256px)] w-[330px] flex flex-col gap-y-14 items-center justify-center">
                     <h1 className="font-raleway gradient-text font-medium text-gray-400 text-3xl">
                       Create a Room
                     </h1>
@@ -151,7 +152,7 @@ const App = () => {
                 );
               } else if (roomUI === "joinUI") {
                 return (
-                  <div className="w-[calc(746px-256px)] flex flex-col items-center gap-y-4 justify-center">
+                  <div className="lg:w-[calc(746px-256px)] w-[330px] flex flex-col items-center gap-y-4 justify-center">
                     <h1 className="font-raleway gradient-text  font-medium text-gray-400 text-3xl">
                       Join a Room
                     </h1>
@@ -184,7 +185,7 @@ const App = () => {
                 );
               } else if (roomUI === "privateUI") {
                 return (
-                  <div className="w-[calc(746px-256px)] flex flex-col gap-y-14 items-center justify-center">
+                  <div className="lg:w-[calc(746px-256px)] w-[330px] flex flex-col gap-y-14 items-center justify-center">
                     <h1 className="font-raleway font-medium gradient-text text-3xl">
                       Join a Room
                     </h1>
@@ -233,7 +234,7 @@ const App = () => {
                 );
               } else if (roomUI === "publicUI") {
                 return (
-                  <div className="w-[calc(746px-256px)] p-2.5">
+                  <div className="lg:w-[calc(746px-256px)] w-[330px]  lg:p-2.5">
                     <h1 className="font-raleway gradient-text text-center font-medium text-gray-400 text-xl mt-4">
                       Available Public Rooms
                     </h1>
@@ -245,7 +246,7 @@ const App = () => {
                           try {
                             const { data } = await axios.get(URL + "/rooms");
                             console.log("Retrieved Data", data);
-                            
+
                             const Public = data.filter(
                               (room) => room.roomState === "public"
                             );
@@ -281,7 +282,7 @@ const App = () => {
       )}
       <ToastContainer
         position="top-center"
-        autoClose={1568}
+        autoClose={2000}
         limit={3}
         hideProgressBar={false}
         newestOnTop={false}

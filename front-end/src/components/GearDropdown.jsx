@@ -35,7 +35,7 @@ const GearDropdown = ({setServerStatus, status}) => {
       <div
         className={`
           absolute flex flex-col overflow-hidden
-          top-[-75px] left-[-100px] w-[120px] rounded-br-none rounded-md bg-white
+          top-[-75px] left-[-100px] w-[120px] rounded-br-none rounded-md glass-effect 
           transition duration-300 z-50
           ${dropdownOpen ? "visible opacity-100" : "invisible opacity-0"}
           group-hover:visible group-hover:opacity-100
@@ -44,12 +44,12 @@ const GearDropdown = ({setServerStatus, status}) => {
         <button
         onClick={()=>console.log(status)
         }
-          className="py-2 w-full text-left pl-2.5 font-poppins text-[12px] hover:bg-[#F6BBB9] hover:text-white transition duration-300"
+          className="py-2 w-full text-txt-primary text-left pl-2.5 font-poppins text-[12px] hover:bg-accent hover:text-db-primary transition duration-300"
         >
           Shut Down
         </button>
         <button onClick={setServerStatus}
-          className="py-2 w-full text-left pl-2.5 font-poppins text-[12px] hover:bg-[#CCEBE6] hover:text-white transition duration-300"
+          className="py-2 w-full text-txt-primary text-left pl-2.5 font-poppins text-[12px] hover:bg-accent hover:text-db-primary transition duration-300"
         >
           Server: {status}
         </button>

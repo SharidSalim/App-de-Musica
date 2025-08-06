@@ -7,7 +7,6 @@ import {
   FaPlay,
   FaSearch,
   FaUserFriends,
-  FaVolumeUp,
 } from "react-icons/fa";
 import {
   IoPlaySkipBack,
@@ -42,6 +41,7 @@ const Server = () => {
   const [userData, setUserData] = useState("");
   const [songURL, setSongURL] = useState("");
   const [serverStatus, setServerStatus] = useState("");
+  const [onPage, setOnPage] = useState("player");
   const [volume, setVolume] = useState(50);
   const [chatNotify, setChatNotify] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -199,17 +199,67 @@ const Server = () => {
 
   return (
     <div className="p-2.5 h-screen overflow-hidden w-full bg-db-primary background">
+      <div className="w-full lg:hidden">
+        <ul className="flex items-center justify-between px-2 py-3">
+          <li>
+            <button
+              onClick={() => setOnPage("queue")}
+              className={`font-poppins ${
+                onPage === "queue"
+                  ? "text-accent animate-appear"
+                  : "text-txt-secondary"
+              } font-[200] text-[24px]`}
+            >
+              Queue
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setOnPage("player")}
+              className={`font-poppins ${
+                onPage === "player"
+                  ? "text-accent animate-appear"
+                  : "text-txt-secondary"
+              } font-[200] text-[24px]`}
+            >
+              Player
+            </button>
+          </li>
+          <li>
+            <div className="relative">
+              {chatNotify && onPage !== "lounge" && (
+                <span className="absolute -top-1.5 -left-3 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+                </span>
+              )}
+              <button
+                onClick={() => setOnPage("lounge")}
+                className={`font-poppins ${
+                  onPage === "lounge"
+                    ? "text-accent animate-appear"
+                    : "text-txt-secondary"
+                } font-[200] text-[24px]`}
+              >
+                Lounge
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
       <div
         id="UpperSection"
-        className="flex justify-between h-[calc(100%-86px-12px)]"
+        className="flex justify-between lg:h-[calc(100%-86px-12px)] h-[calc(100%-86px-12px-60px)]"
       >
         <div
           id="Queue"
-          className="glass-effect shadow-md h-full w-[241px] rounded-xl p-1.5"
+          className={`glass-effect w-full lg:block shadow-md h-full lg:w-[241px] rounded-xl p-1.5 ${
+            onPage === "queue" ? "block animate-appear" : "hidden"
+          }`}
         >
           <div className="flex h-[31.5px] items-center justify-between">
             <h1 className="text-[21px] font-poppins text-txt-primary font-semibold ml-[14px]">
-              Queue
+              Tracks
             </h1>
             <p className="mr-[14px] text-sm font-poppins text-accent">
               {queueInit.length}
@@ -233,7 +283,8 @@ const Server = () => {
 
         <div
           id="Spinner"
-          className="w-[calc(100%-(241px*2))] shadow-md relative bg-[#ffffff02]  mx-3 rounded-xl"
+          className={`lg:w-[calc(100%-(241px*2))] w-full shadow-md relative bg-[#ffffff02] lg:mx-3 lg:block rounded-xl 
+            ${onPage === "player" ? "block animate-appear" : "hidden"}`}
         >
           <div
             onClick={() => {
@@ -419,15 +470,47 @@ const Server = () => {
         {!chatSection ? (
           <div
             id="Friends"
-            className="glass-effect shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
+            className={`glass-effect lg:block shadow-md p-1.5 w-full filter h-full lg:w-[241px] rounded-xl ${
+              onPage === "lounge" ? "block animate-appear" : "hidden"
+            } `}
           >
-            <div className="flex h-[31.5px] items-center justify-between">
-              <h1 className="text-[21px] font-poppins text-txt-primary font-semibold ml-[14px]">
+            <div className="flex h-[31.5px] items-center justify-between mx-3.5">
+              <h1 className="text-[21px] font-poppins text-txt-primary font-semibold ">
                 Friends
               </h1>
-              <p className="mr-[14px] text-sm font-poppins text-accent">
+              <p className="text-sm font-poppins text-accent">
                 {initMember.length}/15
               </p>
+              {!chatSection ? (
+                <div
+                  className="relative w-[77.97px] flex justify-end lg:hidden cursor-pointer"
+                  onClick={() => {
+                    setChatSection(!chatSection);
+                    setChatNotify(false);
+                  }}
+                >
+                  {chatNotify && (
+                    <span className="absolute top-0 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+                    </span>
+                  )}
+
+                  <IoChatbubbleSharp
+                    size={22}
+                    className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                  />
+                </div>
+              ) : (
+                <FaUserFriends
+                  onClick={() => {
+                    setChatSection(!chatSection);
+                    setChatNotify(false);
+                  }}
+                  size={22}
+                  className="cursor-pointer lg:hidden text-txt-secondary hover:text-accent transition duration-300"
+                />
+              )}
             </div>
             <div className="overflow-y-auto scrollbar h-[calc(100%-31.5px)]">
               {initMember.map((memberData) => (
@@ -442,11 +525,45 @@ const Server = () => {
         ) : (
           <div
             id="Chats"
-            className="glass-effect shadow-md p-1.5  filter h-full w-[241px] rounded-xl "
+            className={`glass-effect lg:block shadow-md p-1.5  filter h-full w-full lg:w-[241px] rounded-xl ${
+              onPage === "lounge" ? "block animate-appear" : "hidden"
+            } `}
           >
-            <h1 className="text-[21px] h-[31.5px] font-poppins text-txt-primary font-semibold ml-[14px]">
-              Chats
-            </h1>
+            <div className="flex items-center justify-between mx-3.5">
+              <h1 className="text-[21px] h-[31.5px] font-poppins text-txt-primary font-semibold">
+                Chats
+              </h1>
+              {!chatSection ? (
+                <div
+                  className="relative lg:hidden cursor-pointer"
+                  onClick={() => {
+                    setChatSection(!chatSection);
+                    setChatNotify(false);
+                  }}
+                >
+                  {chatNotify && (
+                    <span className="absolute top-0 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+                    </span>
+                  )}
+
+                  <IoChatbubbleSharp
+                    size={26}
+                    className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                  />
+                </div>
+              ) : (
+                <FaUserFriends
+                  onClick={() => {
+                    setChatSection(!chatSection);
+                    setChatNotify(false);
+                  }}
+                  size={26}
+                  className="cursor-pointer lg:hidden text-txt-secondary hover:text-accent transition duration-300"
+                />
+              )}
+            </div>
             <div className="flex relative flex-col justify-end h-[calc(100%-31.5px-35px)]">
               <div
                 ref={messageContainerRef}
@@ -511,7 +628,7 @@ const Server = () => {
                     }
                   }
                 }}
-                className="text-txt-primary placeholder:text-txt-secondary outline-none"
+                className="text-txt-primary placeholder:text-txt-secondary outline-none flex-grow"
                 placeholder="Message..."
                 type="text"
                 name=""
@@ -535,7 +652,7 @@ const Server = () => {
                   }
                 }}
                 size={20}
-                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                className="cursor-pointer ml-3.5 text-txt-secondary hover:text-accent transition duration-300"
               />
             </div>
           </div>
@@ -544,104 +661,141 @@ const Server = () => {
 
       <div
         id="PlayBar"
-        className="h-[86px] p-2 flex shadow-lg justify-evenly items-center glass-effect rounded-xl mt-3"
+        className="h-[86px] p-2 flex shadow-lg  items-center glass-effect rounded-xl mt-3"
       >
         <PlayingSong
           name={queueInit[0]?.title}
           url={queueInit[0]?.thumbnail}
           channel={queueInit[0]?.channel}
         />
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-x-3.5 my-1.5">
-            <IoPlaySkipBack
-              size={20}
-              className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
-              onClick={() => socketRef.current.emit("play-prev", roomId)}
-            />
-
-            {/* {serverPaused ? (
-              <FuncButton
+        <div className="flex flex-col items-center flex-grow max-w-lg mx-auto w-full">
+          <div className="flex items-center w-full lg:w-auto justify-between mx-2">
+            <div className="lg:hidden w-[56px]">
+              <ImExit
                 onClick={() => {
-                  socketRef.current.emit("toggle-play-state", {
-                    roomId,
-                    shouldPause: false,
-                  });
+                  navigate("/");
                 }}
-                className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
-                diameter={"40px"}
-              >
-                <FaPlay
-                  size={16}
-                  className="text-gray-100 group-hover:text-white transition duration-300"
-                />
-              </FuncButton>
-            ) : (
-              <FuncButton
-                onClick={() => {
-                  socketRef.current.emit("toggle-play-state", {
-                    roomId,
-                    shouldPause: true,
-                    currentTime: audio.currentTime * 1000,
-                  });
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                size={22}
+              />
+            </div>
+            <div className="flex items-center gap-x-3.5 my-1.5">
+              <IoPlaySkipBack
+                size={20}
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                onClick={() => socketRef.current.emit("play-prev", roomId)}
+              />
+              {/* {serverPaused ? (
+                <FuncButton
+                  onClick={() => {
+                    socketRef.current.emit("toggle-play-state", {
+                      roomId,
+                      shouldPause: false,
+                    });
+                  }}
+                  className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                  diameter={"40px"}
+                >
+                  <FaPlay
+                    size={16}
+                    className="text-gray-100 group-hover:text-white transition duration-300"
+                  />
+                </FuncButton>
+              ) : (
+                <FuncButton
+                  onClick={() => {
+                    socketRef.current.emit("toggle-play-state", {
+                      roomId,
+                      shouldPause: true,
+                      currentTime: audio.currentTime * 1000,
+                    });
+                  }}
+                  className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
+                  diameter={"40px"}
+                >
+                  <FaPause
+                    size={16}
+                    className="text-gray-100 group-hover:text-white transition duration-300"
+                  />
+                </FuncButton>
+              )} */}
+              {serverPaused ? (
+                <button
+                  onClick={() => {
+                    socketRef.current.emit("toggle-play-state", {
+                      roomId,
+                      shouldPause: false,
+                    });
+                  }}
+                  className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
+                >
+                  <FaPlay
+                    size={14}
+                    className="text-txt-secondary group-hover:text-db-primary transition duration-300 ml-1"
+                  />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    socketRef.current.emit("toggle-play-state", {
+                      roomId,
+                      shouldPause: true,
+                      currentTime: audio.currentTime * 1000,
+                    });
+                  }}
+                  className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
+                >
+                  <FaPause
+                    size={14}
+                    className="text-txt-secondary group-hover:text-db-primary transition duration-300"
+                  />
+                </button>
+              )}
+              <IoPlaySkipForward
+                size={20}
+                onClick={() => socketRef.current.emit("skip-song", roomId)}
+                className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+              />
+            </div>
+            <div className="flex gap-x-2 lg:hidden">
+              <GearDropdown
+                status={serverStatus}
+                setServerStatus={() => {
+                  socketRef.current.emit("change-server-status", roomId);
                 }}
-                className="group border-3 border-gray-100 hover:bg-[#ffffff60] hover:border-white transition duration-300"
-                diameter={"40px"}
-              >
-                <FaPause
-                  size={16}
-                  className="text-gray-100 group-hover:text-white transition duration-300"
+              />
+              {volume > 0 ? (
+                <FaVolumeHigh
+                  className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                  size={22}
+                  onClick={() => {
+                    setVolume(0);
+                    audio.setVolume(0);
+                  }}
                 />
-              </FuncButton>
-            )} */}
-
-            {serverPaused ? (
-              <button
-                onClick={() => {
-                  socketRef.current.emit("toggle-play-state", {
-                    roomId,
-                    shouldPause: false,
-                  });
-                }}
-                className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
-              >
-                <FaPlay
-                  size={14}
-                  className="text-txt-secondary group-hover:text-db-primary transition duration-300 ml-1"
+              ) : (
+                <FaVolumeXmark
+                  className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
+                  size={22}
+                  onClick={() => {
+                    setVolume(50);
+                    audio.setVolume(0.5);
+                  }}
                 />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  socketRef.current.emit("toggle-play-state", {
-                    roomId,
-                    shouldPause: true,
-                    currentTime: audio.currentTime * 1000,
-                  });
-                }}
-                className="w-10 h-10 rounded-full bg-db-tertiary flex items-center justify-center hover:bg-accent group transition-all duration-300"
-              >
-                <FaPause
-                  size={14}
-                  className="text-txt-secondary group-hover:text-db-primary transition duration-300"
-                />
-              </button>
-            )}
-
-            <IoPlaySkipForward
-              size={20}
-              onClick={() => socketRef.current.emit("skip-song", roomId)}
-              className="cursor-pointer text-txt-secondary hover:text-accent transition duration-300"
-            />
+              )}
+            </div>
           </div>
-          <div className="flex items-center">
+
+          <div className="flex items-center w-full gap-2 mt-2 mx-5">
             <p
               id="timer"
               className="font-poppins font-medium w-6 text-[12.5px] text-txt-secondary"
             >
               {formatTime(audio.currentTime)}
             </p>
+
             <input
-              className="w-[475px] h-1 mx-3"
+              className="flex-grow h-1"
               value={audio.progress * 100}
               type="range"
               min={0}
@@ -663,7 +817,7 @@ const Server = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-x-3">
+        <div className="items-center gap-x-3 hidden lg:flex">
           <ImExit
             onClick={() => {
               navigate("/");
